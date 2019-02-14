@@ -41,23 +41,6 @@ class serialPlot:
             while self.isReceiving != True:
                 time.sleep(0.1)
 
-    def animate(self, frame, lines, lineValueText, lineLabel):
-        # currentTimer = time.perf_counter()
-        # self.plotTimer = int((currentTimer - self.previousTimer) * 1000)  # the first reading will be erroneous
-        # self.previousTimer = currentTimer
-        value, = struct.unpack('f', self.rawData)
-
-        # this is smoothing out the arduino's random data bc I'm too lazy to change the code in the arduino
-        new_value = ((5/20)*(value-30)) + 30
-        if new_value > 33.5:
-            new_value = None
-        # -------------------- end smoothing ---------------------------
-        # TODO: If no data available, what will value contain? Ans: None
-        # TODO: If no data available, we need to skip plotting for that time.
-        self.data.appendleft(new_value)  # we get the latest data point and append it to our array
-        lines.set_data(range(self.plotMaxLength), self.data)
-        lineValueText.set_text(lineLabel + ' = ' + str(value))
-
     def backgroundThread(self):
         time.sleep(1.0)  # give some buffer time for retrieving data
         try:
@@ -106,6 +89,24 @@ class Window(Frame):
         canvas = FigureCanvasTkAgg(figure, master=self.master)
         canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
 
+def animate(self, sp, lines, lineValueText, lineLabel):
+    # currentTimer = time.perf_counter()
+    # self.plotTimer = int((currentTimer - self.previousTimer) * 1000)  # the first reading will be erroneous
+    # self.previousTimer = currentTimer
+    value, = struct.unpack('f', sp.rawData)
+    # this is smoothing out the arduino's random data bc I'm too lazy to change the code in the arduino
+    new_value = ((5/20)*(value-30)) + 30
+    if new_value > 34:
+        new_value = None
+        sp.data.appendleft(new_value)  # we get the latest data point and append it to our array
+        lineValueText.set_text('Sensor Unplugged')
+    else:
+        # -------------------- end smoothing ---------------------------
+        # TODO: If no data available, what will value contain? Ans: None
+        # TODO: If no data available, we need to skip plotting for that time.
+        sp.data.appendleft(new_value)  # we get the latest data point and append it to our array
+        lines.set_data(range(sp.plotMaxLength), sp.data)
+        lineValueText.set_text(lineLabel + ' = ' + str(new_value))
 
 # ---------------------------------------------------------------------------------------------------------------------
 def main():
@@ -143,7 +144,7 @@ def main():
     # timeText = ax.text(0.70, 0.95, '', transform=ax.transAxes)
     lines = ax.plot([], [], label=lineLabel)[0]
     lineValueText = ax.text(0.50, 0.90, '', transform=ax.transAxes)
-    anim = animation.FuncAnimation(fig, sp.animate, fargs=(lines, lineValueText, lineLabel), interval=pltInterval)
+    anim = animation.FuncAnimation(fig, animate, fargs=(sp, lines, lineValueText, lineLabel), interval=pltInterval)
 
     plt.legend(loc="upper left")
     root.mainloop()
