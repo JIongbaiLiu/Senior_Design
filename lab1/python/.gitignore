@@ -1,19 +1,7 @@
-../.DS_Store
-.DS_Store
 .idea/
-python/.DS_Store
-python/.idea/dictionaries/
-python/.idea/inspectionProfiles/
-python/.idea/misc.xml
-python/.idea/modules.xml
-python/.idea/python.iml
-python/.idea/workspace.xml
-python/__pycache__/
-python/venv/
-
-# User-specific stuff
-.idea/**/workspace.xml
-.idea/**/tasks.xml
-.idea/**/usage.statistics.xml
-.idea/**/dictionaries
-.idea/**/shelf.idea
+venv/
+__pycache__/
+../../.DS_Store
+../.DS_Store
+../.idea/
+.DS_Store
