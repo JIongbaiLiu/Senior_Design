@@ -9,7 +9,7 @@ void setup() {
 void loop() {
   timeSync(loopTime);
   //int val = analogRead(0) - 512;
-  double val = random(10,50);
+  double val = random(25,35);
   sendToPC(&val);
 }
  
@@ -39,7 +39,7 @@ void sendToPC(int* data)
   Serial.write(byteData, 2);
 }
  
-void sendToPC(double data)
+void sendToPC(double* data)
 {
   byte* byteData = (byte*)(data);
   Serial.write(byteData, 4);

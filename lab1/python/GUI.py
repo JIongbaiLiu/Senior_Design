@@ -2,13 +2,15 @@ from threading import Thread
 import serial
 import time
 import collections
+import send_sms
 import matplotlib
+
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import struct
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from tkinter import TOP, Button, Tk, BOTH
+import tkinter
 from tkinter.ttk import Frame
 
 
@@ -65,14 +67,6 @@ class serialPlot:
         self.serialConnection.close()
         print('Disconnected...')
 
-    def set_rawData(self, var):
-        self.rawData = var
-
-    def get_plotMaxLength(self):
-        return self.plotMaxLength
-
-    def get_data(self):
-        return self.data
 
 # ---------------------------------------------------------------------------------------------------------------------
 class Window(Frame):
@@ -87,38 +81,41 @@ class Window(Frame):
     def initWindow(self, figure):
         self.master.title("Real Time Temperature")
         canvas = FigureCanvasTkAgg(figure, master=self.master)
-        canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
+        canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
 
+
+# ---------------------------------------------------------------------------------------------------------------------
 def animate(self, sp, lines, lineValueText, lineLabel):
-    # currentTimer = time.perf_counter()
-    # self.plotTimer = int((currentTimer - self.previousTimer) * 1000)  # the first reading will be erroneous
-    # self.previousTimer = currentTimer
     value, = struct.unpack('f', sp.rawData)
     # this is smoothing out the arduino's random data bc I'm too lazy to change the code in the arduino
-    new_value = ((5/20)*(value-30)) + 30
-    if new_value > 34:
+    # new_value = ((5/20)*(value-30)) + 30
+    if value > 34:
         new_value = None
         sp.data.appendleft(new_value)  # we get the latest data point and append it to our array
         lineValueText.set_text('Sensor Unplugged')
     else:
-        # -------------------- end smoothing ---------------------------
-        # TODO: If no data available, what will value contain? Ans: None
-        # TODO: If no data available, we need to skip plotting for that time.
-        sp.data.appendleft(new_value)  # we get the latest data point and append it to our array
+        sp.data.appendleft(value)  # we get the latest data point and append it to our array
         lines.set_data(range(sp.plotMaxLength), sp.data)
-        lineValueText.set_text(lineLabel + ' = ' + str(new_value))
+        lineValueText.set_text(lineLabel + ' = ' + str(value))
+
 
 # ---------------------------------------------------------------------------------------------------------------------
 def main():
+    # setup serial port
     portName = '/dev/cu.usbserial-1440'
     baudRate = 38400
-    maxPlotLength = 101     # number of points in x-axis
-    dataNumBytes = 4        # number of bytes of 1 data point
-    sp = serialPlot(portName, baudRate, maxPlotLength, dataNumBytes)    # initializes all required variables
-    sp.readSerialStart()                                               # starts background thread
+    maxPlotLength = 101  # number of points in x-axis
+    dataNumBytes = 4  # number of bytes of 1 data point
+    sp = serialPlot(portName, baudRate, maxPlotLength, dataNumBytes)  # initializes all required variables
+    sp.readSerialStart()  # starts background thread
 
-    # plotting starts below
-    pltInterval = 1000    # Period at which the plot animation updates [ms]
+    # setup texting service
+    sending_number = '+15156196749'  # Twilio's number
+    receiving_number = '+15153710142'  # Your phone number
+    ss = send_sms.TextSMS(sending_number, receiving_number)
+
+    # setup plot
+    pltInterval = 1000  # Period at which the plot animation updates [ms]
     xmin = 0
     xmax = maxPlotLength - 1  # The - 1 allows the line to touch the edge of the plot
     ymin = 10
@@ -133,15 +130,34 @@ def main():
     ax.yaxis.set_label_position("right")
 
     # Tkinter's GUI
-    root = Tk()
-    app = Window(fig, root, sp)
+    root = tkinter.Tk()
+    # app = Window(fig, root, sp)
 
-    #TKinter Buttons and Text Boxes
-    # Button = Tk.button(root, text="Stop", height=5, width=5)
-    # Button.pack()
+    canvas = FigureCanvasTkAgg(fig, master=root)  # A tk.DrawingArea.
+    canvas.draw()
+    # canvas.get_tk_widget().pack(side=tkinter.RIGHT, fill=tkinter.BOTH, expand=1)
+    canvas.get_tk_widget().grid(row=0, column=1)
+    root.columnconfigure(0, weight=1)
+    root.title("Real Time Temperature")
+
+    frame = Frame(root)
+    frame.grid(row=0, column=0, sticky="n")
+
+    maxTemp_label = tkinter.Label(frame, text="Max Temp").grid(row=1, column=0, sticky="w")
+    maxTemp_entry = tkinter.Entry(frame).grid(row=1, column=1, sticky=tkinter.E + tkinter.W)
+    maxTemp_Button = tkinter.Button(frame, text="Update").grid(row=1, column=3, sticky="we")
+
+    minTemp_label = tkinter.Label(frame, text="Min Temp").grid(row=2, column=0, sticky="w")
+    minTemp_entry = tkinter.Entry(frame).grid(row=2, column=1, sticky=tkinter.E)
+    minTemp_Button = tkinter.Button(frame, text="Update").grid(row=2, column=3, sticky="we")
+
+    phone_label = tkinter.Label(frame, text="Phone #").grid(row=3, column=0, sticky="w")
+    phone_entry = tkinter.Entry(frame).grid(row=3, column=1, sticky=tkinter.E + tkinter.W)
+    phone_Button = tkinter.Button(frame, text="Update").grid(row=3, column=3, sticky="we")
+
+    Button4 = tkinter.Button(frame, text="Turn off LEDs").grid(row=4, column=0, sticky="we")
 
     lineLabel = "Temperature (\u00b0C)"
-    # timeText = ax.text(0.70, 0.95, '', transform=ax.transAxes)
     lines = ax.plot([], [], label=lineLabel)[0]
     lineValueText = ax.text(0.50, 0.90, '', transform=ax.transAxes)
     anim = animation.FuncAnimation(fig, animate, fargs=(sp, lines, lineValueText, lineLabel), interval=pltInterval)
