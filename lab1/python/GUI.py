@@ -112,7 +112,7 @@ def main():
     # setup texting service
     sending_number = '+15156196749'  # Twilio's number
     receiving_number = '+15153710142'  # Your phone number
-    ss = send_sms.TextSMS(sending_number, receiving_number)
+    texting_service = send_sms.TextSMS(sending_number, receiving_number)
 
     # setup plot
     pltInterval = 1000  # Period at which the plot animation updates [ms]
