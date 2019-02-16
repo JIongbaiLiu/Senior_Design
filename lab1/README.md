@@ -12,4 +12,5 @@
 ### Current Issues
 
 * Plot cannot be resized
+* When the sensor is unplugged the graph stops real-time plotting. Plugging the sensor back in resumes it and correctly shows a gap in data
 * Formatting
