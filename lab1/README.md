@@ -12,4 +12,4 @@
 ### Current Issues
 
 * Plot cannot be resized
-* The formatting sucks
+* Formatting
