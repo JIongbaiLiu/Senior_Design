@@ -14,76 +14,79 @@ import tkinter
 from tkinter.ttk import Frame
 
 
-class serialManagement:
-    def __init__(self, serialPort='/dev/cu.usbserial-1440', serialBaud=38400, plotLength=100, dataNumBytes=2):
-        self.port = serialPort
-        self.baud = serialBaud
-        self.plotMaxLength = plotLength
-        self.dataNumBytes = dataNumBytes
-        self.rawData = bytearray(dataNumBytes)
-        self.data = collections.deque([0] * plotLength, maxlen=plotLength)
-        self.isRun = True
-        self.isReceiving = False
+# Connects serial port and starts thread to monitor it. As it gets data it puts it in raw_data for animate to use
+class SerialManagement:
+    def __init__(self, serial_port='/dev/cu.usbserial-1440', serial_baud=9600, plot_length=100, data_num_bytes=2):
+        self.port = serial_port
+        self.baud = serial_baud
+        self.plot_max_length = plot_length
+        self.data_num_bytes = data_num_bytes
+        self.raw_data = bytearray(data_num_bytes)
+        self.data = collections.deque([None] * plot_length, maxlen=plot_length)
+        self.is_run = True
+        self.is_receiving = False
         self.thread = None
-        self.plotTimer = 0
-        self.previousTimer = 0
+        self.plot_timer = 0
+        self.previous_timer = 0
 
-        print('Trying to connect to: ' + str(serialPort) + ' at ' + str(serialBaud) + ' BAUD.')
+        print('Trying to connect to: ' + str(serial_port) + ' at ' + str(serial_baud) + ' BAUD.')
         try:
-            self.serialConnection = serial.Serial(serialPort, serialBaud, timeout=4)
-            print('Connected to ' + str(serialPort) + ' at ' + str(serialBaud) + ' BAUD.')
+            self.serialConnection = serial.Serial(serial_port, serial_baud, timeout=4)
+            print('Connected to ' + str(serial_port) + ' at ' + str(serial_baud) + ' BAUD.')
         except:
-            print("Failed to connect with " + str(serialPort) + ' at ' + str(serialBaud) + ' BAUD.')
+            print("Failed to connect with " + str(serial_port) + ' at ' + str(serial_baud) + ' BAUD.')
 
     def readSerialStart(self):
         if self.thread == None:
             self.thread = Thread(target=self.backgroundThread)
             self.thread.start()
             # Block till we start receiving values
-            while self.isReceiving != True:
+            while self.is_receiving != True:
                 time.sleep(0.1)
 
     def backgroundThread(self):
         time.sleep(1.0)  # give some buffer time for retrieving data
         try:
             self.serialConnection.reset_input_buffer()
-            while (self.isRun):
+            while self.is_run:
                 try:
-                    self.serialConnection.readinto(self.rawData)
-                    self.isReceiving = True
+                    self.serialConnection.readinto(self.raw_data)
+                    self.is_receiving = True
                     # print(self.rawData)
-                except Exception:
-                    # sensor was unplugged during program execution
-                    # TODO: try to mock the incoming data with None
-                    # TODO: Figure out how to monitor port until USB plugged back in
-                    print("Something bad happened")
+                except serial.serialutil.SerialException:
+                    # sensor was unplugged during program execution or the program can't read the data
+                    print("Device unplugged")
+                    break
         except AttributeError:
             print("Sensor not plugged in")
             self.readSerialStart()
 
     def close(self):
-        self.isRun = False
+        self.is_run = False
         self.thread.join()
         self.serialConnection.close()
-        print('Disconnected...')
+        print('Serial Communication Disconnected')
 
 
-# ---------------------------------------------------------------------------------------------------------------------
+# Sets up GUI
 class Window:
-    max_temp = None
+    max_temp = 0.0
+    sent_max_sms = False
+    need_to_reset_max_sms = False
 
-    def __init__(self, fig, root, max, min_temp, phone_nums):
+    min_temp = 0.0
+    sent_min_sms = False
+    need_to_reset_min_sms = False
+
+    sending_number = 0  # Twilio's number
+    receiving_number = 0  # Your phone number
+
+    def __init__(self, fig, root):
         self.entry = None
         self.setPoint = None
         self.master = root
-        self.initWindow(fig)
-        self.max_temp = max
-        self.min_temp = min_temp
-        self.sending_number = phone_nums[0]  # Twilio's number
-        self.receiving_number = phone_nums[1]  # Your phone number
-
-    def initWindow(self, fig):
         self.frame = Frame(self.master)
+
         self.master.title("Real Time Temperature")
         canvas = FigureCanvasTkAgg(fig, master=self.master)
         canvas.draw()
@@ -91,74 +94,105 @@ class Window:
         self.master.columnconfigure(0, weight=1)
         self.frame.grid(row=0, column=0, sticky="n")
 
-        maxTemp_label = tkinter.Label(self.frame, text="Max Temp").grid(row=1, column=0, sticky="w")
-        maxTemp_entry = tkinter.Entry(self.frame).grid(row=1, column=1, sticky=tkinter.E + tkinter.W)
-        maxTemp_Button = tkinter.Button(self.frame, text="Update").grid(row=1, column=3, sticky="we")
+        # Max Temp elements setup
+        tkinter.Label(self.frame, text="Max Temp").grid(row=1, column=0, sticky="w")
+        max_temp_label_val = tkinter.StringVar(self.frame, value=Window.max_temp)
+        self.max_temp_entry = tkinter.Entry(self.frame, textvariable=max_temp_label_val)
+        self.max_temp_entry.grid(row=1, column=1, sticky=tkinter.E + tkinter.W)
+        max_temp_button = tkinter.Button(self.frame, text="Update", command=self.update_max_temp)
+        max_temp_button.grid(row=1, column=3, sticky="we")
 
-        minTemp_label = tkinter.Label(self.frame, text="Min Temp").grid(row=2, column=0, sticky="w")
-        minTemp_entry = tkinter.Entry(self.frame).grid(row=2, column=1, sticky=tkinter.E)
-        minTemp_Button = tkinter.Button(self.frame, text="Update").grid(row=2, column=3, sticky="we")
+        # Min Temp elements setup
+        tkinter.Label(self.frame, text="Min Temp").grid(row=2, column=0, sticky="w")
+        min_temp_label_val = tkinter.StringVar(self.frame, value=self.max_temp)
+        self.min_temp_entry = tkinter.Entry(self.frame, textvariable=min_temp_label_val)
+        self.min_temp_entry.grid(row=2, column=1, sticky=tkinter.E)
+        tkinter.Button(self.frame, text="Update", command=self.update_min_temp).grid(row=2, column=3,
+                                                                                                       sticky="we")
 
-        phone_label = tkinter.Label(self.frame, text="Phone #").grid(row=3, column=0, sticky="w")
-        phone_entry = tkinter.Entry(self.frame).grid(row=3, column=1, sticky=tkinter.E + tkinter.W)
-        phone_Button = tkinter.Button(self.frame, text="Update").grid(row=3, column=3, sticky="we")
+        # Phone Number elements setup
+        tkinter.Label(self.frame, text="Phone #").grid(row=3, column=0, sticky="w")
+        phone_label_val = tkinter.StringVar(self.frame, value=self.receiving_number)
+        self.phone_entry = tkinter.Entry(self.frame, textvariable=phone_label_val)
+        self.phone_entry.grid(row=3, column=1, sticky=tkinter.E + tkinter.W)
+        tkinter.Button(self.frame, text="Update", command=self.update_phone_number).grid(row=3, column=3,
+                                                                                                        sticky="we")
 
-        Button4 = tkinter.Button(self.frame, text="Turn off LEDs").grid(row=4, column=0, sticky="we")
+        led_button = tkinter.Button(self.frame, text="Turn off LEDs").grid(row=4, column=0, sticky="we")
 
     def update_max_temp(self):
-        print("Yo")
-        # TODO: get value either from entry box or send it through the callback in the button
-        # self.max_temp = Entry box value
+        Window.max_temp = float(self.max_temp_entry.get())
 
     def update_min_temp(self):
-        print("Yo")
-        # TODO: get value either from entry box or send it through the callback in the button
-        # self.min_temp = Entry box value
+        self.min_temp = self.min_temp_entry.get()
 
     def update_phone_number(self):
-        print("Yo")
-        # TODO: get value either from entry box or send it through the callback in the button
-        # self.receiving_number = Entry box value
+        self.receiving_number = self.phone_entry.get()
 
 
-# ---------------------------------------------------------------------------------------------------------------------
-def animate(self, sm, lines, lineValueText, lineLabel):
-    value, = struct.unpack('f', sm.rawData)
-    # this is smoothing out the arduino's random data bc I'm too lazy to change the code in the arduino
-    # new_value = ((5/20)*(value-30)) + 30
+# This method animates the graph
+def animate(self, sm, lines, line_value_text, line_label):
+    value, = struct.unpack('f', sm.raw_data)
+    line_label_text = str(value)
     # TODO: what is value when arduino is off/unplugged?
-    if value is None:  # this case handles when arudino if "off"
-        sm.data.appendleft(value)  # we get the latest data point and append it to our array
-        lineValueText.set_text('No data available')
+    if value is None:  # this case handles when arduino if "off"
+        sm.data.appendleft(value)  # TODO: I don't think this is needed anymore
+        line_label_text = 'No data available'
     elif value == -127:
         value = None
-        sm.data.appendleft(value)  # we get the latest data point and append it to our array
-        lineValueText.set_text('Sensor Unplugged')
+        sm.data.appendleft(value)  # TODO: I don't think this is needed anymore
+        line_label_text = 'Sensor Unplugged'
+    elif value > Window.max_temp:
+        if not Window.sent_max_sms:  # if we haven't sent the text yet
+            message = f'Temperature value has exceeded {Window.max_temp}'
+            # send_sms.TextSMS.send_message(message, Window.sending_number, Window.receiving_number)
+            print(message)
+            Window.sent_max_sms = True
+            Window.need_to_reset_max_sms = True
+    elif value < Window.min_temp:
+        if not Window.sent_min_sms:  # if we haven't sent the text yet
+            message = f'Temperature value has fallen under {Window.min_temp}'
+            # send_sms.TextSMS.send_message(message, Window.sending_number, Window.receiving_number)
+            print(message)
+            Window.sent_min_sms = True
+            Window.need_to_reset_min_sms = True
     else:
-        sm.data.appendleft(value)  # we get the latest data point and append it to our array
-        lines.set_data(range(sm.plotMaxLength), sm.data)
-        lineValueText.set_text(lineLabel + ' = ' + str(value))
+        if Window.need_to_reset_max_sms:
+            Window.sent_max_sms = False
+            Window.need_to_reset_max_sms = False
+            print("Reset Max SMS")
+        if Window.need_to_reset_min_sms:
+            Window.sent_min_sms = False
+            Window.need_to_reset_min_sms = False
+            print("Reset Min SMS")
+
+    sm.data.appendleft(value)  # we get the latest data point and append it to our array
+    lines.set_data(range(sm.plot_max_length), sm.data)
+    line_value_text.set_text(line_label + ' = ' + line_label_text)
 
 
-# ---------------------------------------------------------------------------------------------------------------------
+# Makes calls to set up serial port & tkinter. Then it starts animation of plot
+#  and hands off program execution to tkinter
 def main():
     # setup serial port
-    portName = '/dev/cu.usbserial-1440'
-    baudRate = 38400
-    maxPlotLength = 101  # number of points in x-axis
-    dataNumBytes = 4  # number of bytes of 1 data point
-    sm = serialManagement(portName, baudRate, maxPlotLength, dataNumBytes)  # initializes all required variables
+    port_name = '/dev/cu.usbserial-1440'  # this is specific to os and which usb port it's plugged into
+    baud_rate = 9600  # make sure this matches the rate specified in arduino code
+    max_plot_length = 101  # number of points in x-axis
+    data_num_bytes = 4  # number of bytes of 1 data point
+    sm = SerialManagement(port_name, baud_rate, max_plot_length, data_num_bytes)
     sm.readSerialStart()  # starts background thread
 
     # setup texting service
-    phone_nums = ['+15156196749', '+15153710142']  # Twilio's number, your number
-    max_temp = 36
-    min_temp = 24
+    phone_nums = ['+15156196749', '+15153710142']  # [Twilio's number, your number]
+    Window.sending_number = phone_nums[0]
+    Window.receiving_number = phone_nums[1]
+    Window.max_temp = 28.0
+    Window.min_temp = 24.0
 
     # setup plot
-    pltInterval = 1000  # Period at which the plot animation update in ms
+    plt_interval = 1000  # Period at which the plot animation update in ms
     xmin = 0
-    xmax = maxPlotLength - 1  # The - 1 allows the line to touch the edge of the plot
+    xmax = max_plot_length - 1  # The - 1 allows the line to touch the edge of the plot
     ymin = 10
     ymax = 50
     fig = plt.figure(figsize=(8, 6))
@@ -169,17 +203,17 @@ def main():
     ax.set_ylabel("Temperature (\u00b0C)")
     ax.yaxis.tick_right()
     ax.yaxis.set_label_position("right")
-    lineLabel = "Temperature (\u00b0C)"
-    lines = ax.plot([], [], label=lineLabel)[0]
-    lineValueText = ax.text(0.50, 0.90, '', transform=ax.transAxes)
+    line_label = "Temperature (\u00b0C)"
+    lines = ax.plot([], [], label=line_label)[0]
+    line_value_text = ax.text(0.50, 0.90, '', transform=ax.transAxes)
     plt.legend(loc="upper left")
 
     # Tkinter's GUI
     root = tkinter.Tk()
-    Window(fig, root, max_temp, min_temp, phone_nums)
+    Window(fig, root)
 
     # Animates the plot
-    anim = animation.FuncAnimation(fig, animate, fargs=(sm, lines, lineValueText, lineLabel), interval=pltInterval)
+    anim = animation.FuncAnimation(fig, animate, fargs=(sm, lines, line_value_text, line_label), interval=plt_interval)
 
     root.mainloop()
 
