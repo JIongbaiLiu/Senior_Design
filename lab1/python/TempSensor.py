@@ -26,7 +26,7 @@ def animate(self, sm, lines, line_value_text, line_label):
             message = f'Temperature value has exceeded {Window.max_temp}'
             # Comment this out when testing!!!!
             # TextSMS.send_message(message, Window.sending_number, Window.receiving_number)
-            print(message)
+            print(message)  # cwb debug
             Window.sent_max_sms = True
             Window.need_to_reset_max_sms = True
     elif value < Window.min_temp:
@@ -34,7 +34,7 @@ def animate(self, sm, lines, line_value_text, line_label):
             message = f'Temperature value has fallen under {Window.min_temp}'
             # Comment this out when testing!!!
             # TextSMS.send_message(message, Window.sending_number, Window.receiving_number)
-            print(message)
+            print(message)  # cwb debug
             Window.sent_min_sms = True
             Window.need_to_reset_min_sms = True
     else:

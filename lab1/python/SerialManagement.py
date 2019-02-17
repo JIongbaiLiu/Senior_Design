@@ -6,8 +6,8 @@ import collections
 
 # Connects serial port and starts thread to monitor it. As it gets data it puts it in raw_data for animate to use
 class SerialManagement:
-    LED_OFF = 0
-    LED_ON = 1
+    LED_OFF = '0'
+    LED_ON = '1'
 
     def __init__(self, serial_port='/dev/cu.usbserial-1440', serial_baud=9600, plot_length=100, data_num_bytes=2):
         self.port = serial_port
@@ -57,10 +57,11 @@ class SerialManagement:
             print("Sensor not plugged in")
             self.start_serial_thread()
 
-    def change_led(self, command):
-        print("Made it to change_led")  # cwb debug
+    def toggle_led(self):
+        # print("Made it to toggle_led")  # cwb debug
+        command = '1'
         self.serialConnection.reset_output_buffer()
-        self.serialConnection.write(command)
+        self.serialConnection.write(command.encode())
 
     def close(self):
         self.is_run = False

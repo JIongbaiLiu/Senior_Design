@@ -72,7 +72,4 @@ class Window:
         print(f'After update phone #: {Window.receiving_number}')  # cwb debug
 
     def change_leds(self):
-        if self.sm.is_on:
-            self.sm.change_led(SerialManagement.LED_OFF)
-        else:
-            self.sm.change_led(SerialManagement.LED_ON)
+        self.sm.toggle_led()
