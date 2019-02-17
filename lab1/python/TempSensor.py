@@ -6,6 +6,7 @@ import matplotlib.animation as animation
 import struct
 import tkinter
 from GUI import Window
+from sendSMS import TextSMS
 
 
 # This method animates the graph
@@ -23,14 +24,16 @@ def animate(self, sm, lines, line_value_text, line_label):
     elif value > Window.max_temp:
         if not Window.sent_max_sms:  # if we haven't sent the text yet
             message = f'Temperature value has exceeded {Window.max_temp}'
-            # send_sms.TextSMS.send_message(message, Window.sending_number, Window.receiving_number)
+            # Comment this out when testing!!!!
+            # TextSMS.send_message(message, Window.sending_number, Window.receiving_number)
             print(message)
             Window.sent_max_sms = True
             Window.need_to_reset_max_sms = True
     elif value < Window.min_temp:
         if not Window.sent_min_sms:  # if we haven't sent the text yet
             message = f'Temperature value has fallen under {Window.min_temp}'
-            # send_sms.TextSMS.send_message(message, Window.sending_number, Window.receiving_number)
+            # Comment this out when testing!!!
+            # TextSMS.send_message(message, Window.sending_number, Window.receiving_number)
             print(message)
             Window.sent_min_sms = True
             Window.need_to_reset_min_sms = True

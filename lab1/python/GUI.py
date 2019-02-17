@@ -41,14 +41,14 @@ class Window:
 
         # Min Temp elements setup
         tkinter.Label(self.frame, text="Min Temp").grid(row=2, column=0, sticky="w")
-        min_temp_label_val = tkinter.StringVar(self.frame, value=self.max_temp)
+        min_temp_label_val = tkinter.StringVar(self.frame, value=Window.min_temp)
         self.min_temp_entry = tkinter.Entry(self.frame, textvariable=min_temp_label_val)
         self.min_temp_entry.grid(row=2, column=1, sticky=tkinter.E)
         tkinter.Button(self.frame, text="Update", command=self.update_min_temp).grid(row=2, column=3, sticky="we")
 
         # Phone Number elements setup
         tkinter.Label(self.frame, text="Phone #").grid(row=3, column=0, sticky="w")
-        phone_label_val = tkinter.StringVar(self.frame, value=self.receiving_number)
+        phone_label_val = tkinter.StringVar(self.frame, value=Window.receiving_number)
         self.phone_entry = tkinter.Entry(self.frame, textvariable=phone_label_val)
         self.phone_entry.grid(row=3, column=1, sticky=tkinter.E + tkinter.W)
         tkinter.Button(self.frame, text="Update", command=self.update_phone_number).grid(row=3, column=3, sticky="we")
