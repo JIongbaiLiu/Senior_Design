@@ -21,6 +21,7 @@
 > Verify and Upload
 
 ### Todos
+* Get array of 300 points data from arduino and plot them all at once on program startup
 * Formatting
 
 
