@@ -21,8 +21,6 @@
 > Verify and Upload
 
 ### Todos
-* Send LED shutdown signal to Arduino
-    * This requries code in both python & Arduino code
 * Formatting
 
 
