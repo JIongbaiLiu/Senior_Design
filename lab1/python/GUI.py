@@ -21,16 +21,17 @@ class Window:
         self.entry = None
         self.setPoint = None
         self.master = root
-        self.frame = Frame(self.master)
+        self.frame = tkinter.Frame(self.master, bg="white")
         self.sm = sm
         self.leds_on = False
 
+        # set up window
         self.master.title("Real Time Temperature")
         canvas = FigureCanvasTkAgg(fig, master=self.master)
         canvas.draw()
-        canvas.get_tk_widget().grid(row=0, column=1, sticky=tkinter.E + tkinter.S)
+        canvas.get_tk_widget().grid(row=0, column=1, sticky=tkinter.E + tkinter.S + tkinter.N + tkinter.W)
         self.master.columnconfigure(0, weight=1)
-        self.frame.grid(row=0, column=0, sticky="n")
+        self.frame.grid(row=0, column=0, sticky=tkinter.W + tkinter.E + tkinter.N + tkinter.S)
 
         # Max Temp elements setup
         tkinter.Label(self.frame, text="Max Temp").grid(row=1, column=0, sticky="w")
@@ -56,6 +57,20 @@ class Window:
 
         # toggle led button
         tkinter.Button(self.frame, text="Toggle LEDs", command=self.change_leds).grid(row=4, column=0, sticky="we")
+
+        self.frame.rowconfigure(0)
+        self.frame.rowconfigure(1, weight=1)
+        self.frame.rowconfigure(2, weight=1)
+        self.frame.rowconfigure(3, weight=1)
+        self.frame.rowconfigure(4, weight=1)
+        self.frame.columnconfigure(0, weight=1)
+        self.frame.columnconfigure(1, weight=1)
+        self.frame.columnconfigure(2, weight=1)
+        self.frame.columnconfigure(3, weight=1)
+
+        self.master.rowconfigure(0, weight=1)
+        self.master.columnconfigure(0, weight=1)
+        self.master.columnconfigure(1, weight=3)
 
     def update_max_temp(self):
         print(f'Before update max: Max = {Window.max_temp}')  # cwb debug

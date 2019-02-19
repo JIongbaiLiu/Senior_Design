@@ -14,12 +14,10 @@ def animate(self, sm, lines, line_value_text, line_label):
     value, = struct.unpack('f', sm.raw_data)
     line_label_text = str(value)
     # TODO: what is value when arduino is off/unplugged?
-    if value is None:  # this case handles when arduino if "off"
-        # sm.data.appendleft(value)  # TODO: I don't think this is needed anymore
+    if value is None:  # this case handles when arduino is "off"
         line_label_text = 'No data available'
     elif value == -127:
         value = None
-        # sm.data.appendleft(value)  # TODO: I don't think this is needed anymore
         line_label_text = 'Sensor Unplugged'
     elif value > Window.max_temp:
         if not Window.sent_max_sms:  # if we haven't sent the text yet
@@ -69,8 +67,8 @@ def main():
     phone_nums = ['+15156196749', '+15553710142']  # [Twilio's number, your number]
     Window.sending_number = phone_nums[0]
     Window.receiving_number = phone_nums[1]
-    Window.max_temp = 28.0
-    Window.min_temp = 24.0
+    Window.max_temp = 30.0
+    Window.min_temp = 22.0
 
     # setup plot
     plt_interval = 1000  # Period at which the plot animation update in ms

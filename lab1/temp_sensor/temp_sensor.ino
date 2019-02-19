@@ -14,7 +14,6 @@ int interruptPin = 3;
 float tempHist[300] = {-128};
 int index = 0;
 float currentTemp = 0;
-char serialCommand = ' ';
 unsigned long lastTempReadTime = 0;
 bool isDisplayOn = false;
 
@@ -44,14 +43,6 @@ void loop(void)
     getNewTemp();
   }
 
-//  // toggle display flag
-//  if(digitalRead(interruptPin) == LOW) {
-//    isDisplayOn = true;
-//  }
-//  else {
-//    isDisplayOn = false;
-//  }
-
   // turn on/off LEDs based on display flag
   if(isDisplayOn == true) {
     binDisplay();
@@ -74,7 +65,8 @@ void serialEvent() {
       isDisplayOn = true;
       break;
     case 2:
-      binDisplay();
+    isDisplayOn = true;
+//      sendHistory();
       break;
     default:
       break;
@@ -92,9 +84,11 @@ void buttonEvent() {
   }
 }
 
-void sendHistory(void){
+void sendHistory(){
+  binDisplay();
   for(int i = 0; i < 300; i++){
     sendFloat(tempHist[i]);
+    delay(10);
   }
 }
 
@@ -103,7 +97,7 @@ void getNewTemp(void){
  currentTemp = sensors.getTempCByIndex(0);
  tempHist[index] = currentTemp;
  index++;
- if(index == 300){
+ if(index == 299){
   index = 0;
  }
  sendFloat(currentTemp); 

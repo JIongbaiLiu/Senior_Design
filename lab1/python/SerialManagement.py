@@ -1,3 +1,4 @@
+import struct
 from threading import Thread
 import serial
 import time
