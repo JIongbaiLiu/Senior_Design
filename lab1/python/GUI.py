@@ -23,6 +23,7 @@ class Window:
         self.master = root
         self.frame = Frame(self.master)
         self.sm = sm
+        self.leds_on = False
 
         self.master.title("Real Time Temperature")
         canvas = FigureCanvasTkAgg(fig, master=self.master)
@@ -53,8 +54,8 @@ class Window:
         self.phone_entry.grid(row=3, column=1, sticky=tkinter.E + tkinter.W)
         tkinter.Button(self.frame, text="Update", command=self.update_phone_number).grid(row=3, column=3, sticky="we")
 
-        # led button
-        tkinter.Button(self.frame, text="Turn off LEDs", command=self.change_leds).grid(row=4, column=0, sticky="we")
+        # toggle led button
+        tkinter.Button(self.frame, text="Toggle LEDs", command=self.change_leds).grid(row=4, column=0, sticky="we")
 
     def update_max_temp(self):
         print(f'Before update max: Max = {Window.max_temp}')  # cwb debug
@@ -72,4 +73,8 @@ class Window:
         print(f'After update phone #: {Window.receiving_number}')  # cwb debug
 
     def change_leds(self):
-        self.sm.toggle_led()
+        if self.leds_on:
+            self.sm.toggle_led(SerialManagement.LED_OFF)
+        else:
+            self.sm.toggle_led(SerialManagement.LED_ON)
+        self.leds_on = not self.leds_on

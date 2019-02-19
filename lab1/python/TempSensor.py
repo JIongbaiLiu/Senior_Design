@@ -15,11 +15,11 @@ def animate(self, sm, lines, line_value_text, line_label):
     line_label_text = str(value)
     # TODO: what is value when arduino is off/unplugged?
     if value is None:  # this case handles when arduino if "off"
-        sm.data.appendleft(value)  # TODO: I don't think this is needed anymore
+        # sm.data.appendleft(value)  # TODO: I don't think this is needed anymore
         line_label_text = 'No data available'
     elif value == -127:
         value = None
-        sm.data.appendleft(value)  # TODO: I don't think this is needed anymore
+        # sm.data.appendleft(value)  # TODO: I don't think this is needed anymore
         line_label_text = 'Sensor Unplugged'
     elif value > Window.max_temp:
         if not Window.sent_max_sms:  # if we haven't sent the text yet
@@ -56,7 +56,9 @@ def animate(self, sm, lines, line_value_text, line_label):
 # and hands off program execution to tkinter
 def main():
     # setup serial port
-    port_name = '/dev/cu.usbserial-1440'  # this is specific to os and which usb port it's plugged into
+    port_name = '/dev/cu.usbmodem14401'  # this is specific to os and which usb port it's plugged into
+    # '/dev/cu.usbmodem14401'
+    # '/dev/cu.usbserial-1440'
     baud_rate = 9600  # make sure this matches the rate specified in arduino code
     max_plot_length = 301  # number of points in x-axis
     data_num_bytes = 4  # number of bytes of 1 data point
@@ -64,7 +66,7 @@ def main():
     sm.start_serial_thread()  # starts background thread
 
     # setup texting service
-    phone_nums = ['+15156196749', '+15153710142']  # [Twilio's number, your number]
+    phone_nums = ['+15156196749', '+15553710142']  # [Twilio's number, your number]
     Window.sending_number = phone_nums[0]
     Window.receiving_number = phone_nums[1]
     Window.max_temp = 28.0
