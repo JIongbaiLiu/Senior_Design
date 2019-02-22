@@ -32,6 +32,28 @@ class SerialManagement:
         except serial.SerialException:
             print("Failed to connect with " + str(serial_port) + ' at ' + str(serial_baud) + ' BAUD.')
 
+    def initial_serial_read(self):
+        time.sleep(5)
+        self.serialConnection.write(SerialManagement.REQUEST_ARR)
+        time.sleep(0.1)  # give some buffer time for retrieving data
+        try:
+            self.serialConnection.reset_input_buffer()
+            for i in range(300):
+                try:
+                    self.serialConnection.readinto(self.raw_data)
+                    value, = struct.unpack('f', self.raw_data)
+                    print(str(value) + " ")
+                    if value == -187.0:
+                        value = None
+                    self.data.appendleft(value)
+                except serial.serialutil.SerialException:
+                    # sensor was unplugged during program execution or the program can't read the data
+                    print("Device unplugged")
+                    break
+        except AttributeError:
+            print("Sensor not plugged in")
+            self.start_serial_thread()
+
     # starts background thread to monitor serial port
     def start_serial_thread(self):
         if self.thread is None:
@@ -50,7 +72,6 @@ class SerialManagement:
                 try:
                     self.serialConnection.readinto(self.raw_data)
                     self.is_receiving = True
-                    # print(self.rawData)
                 except serial.serialutil.SerialException:
                     # sensor was unplugged during program execution or the program can't read the data
                     print("Device unplugged")

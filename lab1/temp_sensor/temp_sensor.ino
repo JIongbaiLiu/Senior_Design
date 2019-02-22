@@ -11,11 +11,12 @@ int latchPin = 8;
 int interruptPin = 3;
 
 //Global vars
-float tempHist[300] = {-128};
+float tempHist[300];
 int index = 0;
 float currentTemp = 0;
 unsigned long lastTempReadTime = 0;
 bool isDisplayOn = false;
+bool blockSending = true;
 
 DallasTemperature sensors(&oneWire);
 
@@ -25,12 +26,14 @@ void setup(void)
   pinMode(clockPin, OUTPUT);  
   pinMode(latchPin, OUTPUT); 
   updateLEDs(0);
-  Serial.begin(9600); //make sure this matches what is specified in the python program
+  Serial.begin(115200); //make sure this matches what is specified in the python program
   sensors.begin(); 
   lastTempReadTime = millis();
   pinMode(interruptPin, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(interruptPin), buttonEvent, CHANGE);
-  delay(5);
+  for(int i=0; i<300; i++) {
+    tempHist[i] = -187;
+  }
 } 
 
 
@@ -54,22 +57,20 @@ void loop(void)
 
 void serialEvent() {
   if(Serial.available() > 0) {
-    byte buffer1[1];
-    Serial.readBytes(buffer1, 1);
+    byte incomingByte = Serial.read();
     
-    switch(buffer1[0]) {
-    case 0:
-      isDisplayOn = false;
-      break;
-    case 1:
-      isDisplayOn = true;
-      break;
-    case 2:
-    isDisplayOn = true;
-//      sendHistory();
-      break;
-    default:
-      break;
+    switch(incomingByte) {
+      case 0:
+        isDisplayOn = false;
+        break;
+      case 1:
+        isDisplayOn = true;
+        break;
+      case 2:
+        sendHistory();
+        break;
+      default:
+        break;
     }
   }
 }
@@ -85,14 +86,17 @@ void buttonEvent() {
 }
 
 void sendHistory(){
-  binDisplay();
-  for(int i = 0; i < 300; i++){
-    sendFloat(tempHist[i]);
-    delay(10);
+  float currTempHistory[300];
+  for(int i=0; i<300; i++) {
+    currTempHistory[i] = tempHist[i];
   }
+  for(int i=0; i<300; i++) {
+    sendFloat(tempHist[i]);
+  }
+  blockSending = false;
 }
 
-void getNewTemp(void){
+void getNewTemp(){
  sensors.requestTemperatures();
  currentTemp = sensors.getTempCByIndex(0);
  tempHist[index] = currentTemp;
@@ -100,7 +104,9 @@ void getNewTemp(void){
  if(index == 299){
   index = 0;
  }
- sendFloat(currentTemp); 
+ if(!blockSending) {
+  sendFloat(currentTemp);
+ }
 }
 
 void sendFloat(float f) {

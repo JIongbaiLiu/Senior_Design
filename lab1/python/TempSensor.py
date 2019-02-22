@@ -54,13 +54,14 @@ def animate(self, sm, lines, line_value_text, line_label):
 # and hands off program execution to tkinter
 def main():
     # setup serial port
-    port_name = '/dev/cu.usbmodem14401'  # this is specific to os and which usb port it's plugged into
+    port_name = '/dev/cu.usbserial-1440'  # this is specific to os and which usb port it's plugged into
     # '/dev/cu.usbmodem14401'
     # '/dev/cu.usbserial-1440'
-    baud_rate = 9600  # make sure this matches the rate specified in arduino code
+    baud_rate = 115200  # make sure this matches the rate specified in arduino code
     max_plot_length = 301  # number of points in x-axis
     data_num_bytes = 4  # number of bytes of 1 data point
     sm = SM.SerialManagement(port_name, baud_rate, max_plot_length, data_num_bytes)
+    sm.initial_serial_read()  # get temp history
     sm.start_serial_thread()  # starts background thread
 
     # setup texting service
