@@ -32,6 +32,7 @@ class SerialManagement:
         except serial.SerialException:
             print("Failed to connect with " + str(serial_port) + ' at ' + str(serial_baud) + ' BAUD.')
 
+    # Get 300 element temperature history array from arduino, store it in data list
     def initial_serial_read(self):
         time.sleep(5)
         self.serialConnection.write(SerialManagement.REQUEST_ARR)
@@ -42,7 +43,7 @@ class SerialManagement:
                 try:
                     self.serialConnection.readinto(self.raw_data)
                     value, = struct.unpack('f', self.raw_data)
-                    print(str(value) + " ")
+                    # print(str(value) + " ")
                     if value == -187.0:
                         value = None
                     self.data.appendleft(value)

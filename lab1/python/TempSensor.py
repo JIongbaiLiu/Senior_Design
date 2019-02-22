@@ -13,7 +13,6 @@ from sendSMS import TextSMS
 def animate(self, sm, lines, line_value_text, line_label):
     value, = struct.unpack('f', sm.raw_data)
     line_label_text = str(value)
-    # TODO: what is value when arduino is off/unplugged?
     if value is None:  # this case handles when arduino is "off"
         line_label_text = 'No data available'
     elif value == -127:
@@ -22,16 +21,14 @@ def animate(self, sm, lines, line_value_text, line_label):
     elif value > Window.max_temp:
         if not Window.sent_max_sms:  # if we haven't sent the text yet
             message = f'Temperature value has exceeded {Window.max_temp}'
-            # Comment this out when testing!!!!
-            # TextSMS.send_message(message, Window.sending_number, Window.receiving_number)
+            TextSMS.send_message(message, Window.sending_number, Window.receiving_number)
             print(message)  # cwb debug
             Window.sent_max_sms = True
             Window.need_to_reset_max_sms = True
     elif value < Window.min_temp:
         if not Window.sent_min_sms:  # if we haven't sent the text yet
             message = f'Temperature value has fallen under {Window.min_temp}'
-            # Comment this out when testing!!!
-            # TextSMS.send_message(message, Window.sending_number, Window.receiving_number)
+            TextSMS.send_message(message, Window.sending_number, Window.receiving_number)
             print(message)  # cwb debug
             Window.sent_min_sms = True
             Window.need_to_reset_min_sms = True
@@ -54,7 +51,7 @@ def animate(self, sm, lines, line_value_text, line_label):
 # and hands off program execution to tkinter
 def main():
     # setup serial port
-    port_name = '/dev/cu.usbserial-1440'  # this is specific to os and which usb port it's plugged into
+    port_name = '/dev/cu.usbmodem14401'  # this is specific to os and which usb port it's plugged into
     # '/dev/cu.usbmodem14401'
     # '/dev/cu.usbserial-1440'
     baud_rate = 115200  # make sure this matches the rate specified in arduino code
