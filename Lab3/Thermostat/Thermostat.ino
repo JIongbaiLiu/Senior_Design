@@ -10,20 +10,23 @@
 #define TFT_DC 9
 
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
-Adafruit_FT6206 ctp = Adafruit_FT6206();
+Adafruit_FT6206 ts = Adafruit_FT6206();
 
-int temp = 75;
+int real_temp = 75;
+int prev_real_temp = real_temp;
+int set_temp = 72;
+int prev_set_temp = set_temp;
+bool currently_touched = false;
 
 void setup() {
   
   while (!Serial);     // used for leonardo debugging
  
   Serial.begin(115200);
-  Serial.println(F("Cap Touch Paint!"));
   
   tft.begin();
 
-  if (! ctp.begin(40)) {  // pass in 'sensitivity' coefficient
+  if (! ts.begin(40)) {  // pass in 'sensitivity' coefficient
     Serial.println("Couldn't start FT6206 touchscreen controller");
     while (1);
   }
@@ -42,24 +45,48 @@ void setup() {
   printDOWandTime();
   drawHouse();
   printCurrentTemp();
-
 }
 
 void loop() {
-  //get temp
-  // update temp,, if changed or not??
-
-  if(ctp.touched()) { 
-    // Retrieve a point  
-    TS_Point p = ctp.getPoint();
-
-    // flip it around to match the screen.
-    p.x = map(p.x, 0, 240, 240, 0);
-    p.y = map(p.y, 0, 320, 320, 0);
-
-    
+  //get real_temp
+  // update real_temp,, if changed or not??
+  if(!ts.touched()){
+    currently_touched = false;
+    return;
   }
 
+  if(ts.touched()) {
+      if(!currently_touched) {
+      // Retrieve a point  
+      TS_Point p = ts.getPoint();
+
+      // flip it around to match the screen.
+      p.x = map(p.x, 0, 240, 240, 0);
+      p.y = map(p.y, 0, 320, 320, 0);
+
+      // up arrow
+      if (p.x >= 210 && p.x <= 230 && p.y >= 95 && p.y <= 115) {
+        prev_set_temp = set_temp;
+        set_temp = 44;
+        printSetTemp();
+      }
+    }
+    currently_touched = true;
+  }
+}
+
+/**
+ * Helper functions
+ */
+
+// prints the main home screen 
+void printHomeScreen() {
+//  printMode();
+  printSetTemp();
+  printSetTempArrows();
+  printDOWandTime();
+  drawHouse();
+  printCurrentTemp();
 }
 
 // Prints the mode: AC, Heat, Auto
@@ -74,10 +101,24 @@ void printMode(){
 
 // Prints the set point temp
 void printSetTemp(){
+  // "clear" what is there now
   tft.setCursor(75, 150);
   tft.setFont(&FreeSansBold9pt7b);
+  tft.setTextColor(ILI9341_BLACK);
   tft.setTextSize(4);
-  tft.println("72");
+  tft.println(prev_set_temp);
+  tft.setCursor(160, 110);
+  tft.setTextSize(1);
+  tft.println("o");
+  tft.setCursor(172, 125);
+  tft.setTextSize(2);
+  tft.println("F");
+
+  // set new temp
+  tft.setCursor(75, 150);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(4);
+  tft.println(set_temp);
   tft.setCursor(160, 110);
   tft.setTextSize(1);
   tft.println("o");
@@ -87,7 +128,7 @@ void printSetTemp(){
 }
 
 // Prints the temp toggling arrows
-void printSetTempArrows(){
+void printSetTempArrows() {
   int x_start = 210;
   int y_start = 115;
 
@@ -122,15 +163,35 @@ void drawHouse(){
 
 // Prints the current temperature
 void printCurrentTemp() {
+
+  // "clear" what is there now
   tft.setCursor(40, 30);
   tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextColor(ILI9341_BLACK);
   tft.setTextSize(2);
-  tft.print(temp);
+  tft.print(prev_real_temp);
   tft.print(" ");
   tft.print("F");
   tft.setCursor(80, 12);
   tft.setTextSize(1);
   tft.print("o");
 
+  // set new temp
+  tft.setCursor(40, 30);
+  tft.setFont(&FreeSans9pt7b);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(2);
+  tft.print(real_temp);
+  tft.print(" ");
+  tft.print("F");
+
+  //find position for degree symbol
+  if(real_temp < 100){
+    tft.setCursor(80, 12);
+  }
+  else {
+    tft.setCursor(100, 12);
+  }
+  tft.setTextSize(1);
+  tft.print("o");
 }
