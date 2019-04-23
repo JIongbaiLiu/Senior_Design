@@ -20,7 +20,7 @@ bool currently_touched = false;
 
 void setup() {
   
-  while (!Serial);     // used for leonardo debugging
+  while (!Serial);
  
   Serial.begin(115200);
   
@@ -39,11 +39,28 @@ void setup() {
   uint8_t rotation = 3;
   tft.setRotation(rotation);
 
-  printMode();
+  tft.drawLine(0, 200, 320, 200, ILI9341_WHITE);
+  tft.setCursor(10, 220);
+  tft.setFont(&FreeSans9pt7b);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(1);
+  tft.print("Cool Mode");
+
+  tft.drawLine(120, 200, 120, 240, ILI9341_WHITE);
+  
+  tft.setCursor(140, 225);
+  tft.print("Auto");
+
+  tft.drawLine(210, 200, 210, 240, ILI9341_WHITE);
+
+  tft.setCursor(250, 225);
+  tft.print("Hold");
+  
+//  printMode();
   printSetTemp();
   printSetTempArrows();
   printDOWandTime();
-  drawHouse();
+//  drawHouse();
   printCurrentTemp();
 }
 
@@ -85,55 +102,67 @@ void printHomeScreen() {
   printSetTemp();
   printSetTempArrows();
   printDOWandTime();
-  drawHouse();
+//  drawHouse();
   printCurrentTemp();
 }
 
-// Prints the mode: AC, Heat, Auto
-void printMode(){
-  tft.setCursor(75, 85);
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(1);
-  tft.print("Cooling");
-  tft.print(" to");
+
+void drawBottomBar(){
+  tft.drawLine(0, 220, 320, 220, ILI9341_WHITE);
 }
 
-// Prints the set point temp
-void printSetTemp(){
+// slated for deletion 
+//// Prints the mode: AC, Heat, Auto
+//void printMode(){
+//  tft.setCursor(75, 85);
+//  tft.setFont(&FreeSans9pt7b);
+//  tft.setTextColor(ILI9341_WHITE);
+//  tft.setTextSize(1);
+//  tft.print("Cooling");
+//  tft.print(" to");
+//}
+
+// Prints the current temperature
+void printCurrentTemp(){
+  int x_start = 80;
+  int y_start = 145;
+  
   // "clear" what is there now
-  tft.setCursor(75, 150);
+  tft.setCursor(x_start, y_start);
   tft.setFont(&FreeSansBold9pt7b);
   tft.setTextColor(ILI9341_BLACK);
   tft.setTextSize(4);
-  tft.println(prev_set_temp);
-  tft.setCursor(160, 110);
+  tft.println(prev_real_temp);
+  tft.setCursor(x_start+85, y_start-40);
   tft.setTextSize(1);
   tft.println("o");
-  tft.setCursor(172, 125);
+  tft.setCursor(x_start+97, y_start-25);
   tft.setTextSize(2);
   tft.println("F");
 
   // set new temp
-  tft.setCursor(75, 150);
+  tft.setCursor(x_start, y_start);
   tft.setTextColor(ILI9341_WHITE);
   tft.setTextSize(4);
-  tft.println(set_temp);
-  tft.setCursor(160, 110);
+  tft.println(real_temp);
+  tft.setCursor(x_start+85, y_start-40);
   tft.setTextSize(1);
   tft.println("o");
-  tft.setCursor(172, 125);
+  tft.setCursor(x_start+97, y_start-25);
   tft.setTextSize(2);
   tft.println("F");
 }
 
 // Prints the temp toggling arrows
 void printSetTempArrows() {
-  int x_start = 210;
-  int y_start = 115;
+  int x_start = 265;
+  int y_start = 90;
 
+  // up
   tft.fillTriangle(x_start, y_start, x_start+15, y_start-20, x_start+30, y_start, ILI9341_WHITE);  //x0, y0, x1, y1, x2, y2, color
-  tft.fillTriangle(x_start, y_start+20, x_start+15, y_start+40, x_start+30, y_start+20, ILI9341_WHITE);  //x0, y0, x1, y1, x2, y2, color
+
+  // down
+  tft.fillTriangle(x_start, y_start+60, x_start+15, y_start+80, x_start+30, y_start+60, ILI9341_WHITE);  //x0, y0, x1, y1, x2, y2, color
 }
 
 // Prints the Day of Week and current time
@@ -147,51 +176,51 @@ void printDOWandTime(){
 
 // Draws the house icon
 void drawHouse(){
-  // roof
-  int roof_x = 15;
-  int roof_y = 0;
-  tft.drawLine(roof_x, roof_y, roof_x-15, roof_y+15, ILI9341_WHITE);
-  tft.drawLine(roof_x, roof_y, roof_x+15, roof_y+15, ILI9341_WHITE);
-
   // rest of house
-  int house_x = 6;
-  int house_y = 12;
-  tft.drawLine(house_x, house_y, house_x, house_y+20, ILI9341_WHITE);
-  tft.drawLine(house_x+18, house_y, house_x+18, house_y+20, ILI9341_WHITE);
-  tft.drawLine(house_x, house_y+20, house_x+18, house_y+20, ILI9341_WHITE);
+  int house_x = 11;
+  int house_y = 6;
+  tft.drawLine(house_x, house_y, house_x, house_y+10, ILI9341_WHITE);
+  tft.drawLine(house_x+9, house_y, house_x+9, house_y+10, ILI9341_WHITE);
+  tft.drawLine(house_x, house_y+10, house_x+8, house_y+10, ILI9341_WHITE);
+  
+  // roof
+  tft.drawLine(house_x+4, house_y-6, house_x-3, house_y+1, ILI9341_WHITE);
+  tft.drawLine(house_x+4, house_y-6, house_x+11, house_y+1, ILI9341_WHITE);
 }
 
-// Prints the current temperature
-void printCurrentTemp() {
-
+// Prints the set temperature
+void printSetTemp() {
+  int start_x = 260;
+  int start_y = 130;
+  
   // "clear" what is there now
-  tft.setCursor(40, 30);
+  tft.setCursor(start_x, start_y);
   tft.setFont(&FreeSans9pt7b);
   tft.setTextColor(ILI9341_BLACK);
   tft.setTextSize(2);
-  tft.print(prev_real_temp);
-  tft.print(" ");
-  tft.print("F");
-  tft.setCursor(80, 12);
-  tft.setTextSize(1);
-  tft.print("o");
+  tft.print(prev_set_temp);
+//  tft.print(" ");
+//  tft.print("F");
+//  tft.setCursor(start_x+40, start_y-18);
+//  tft.setTextSize(1);
+//  tft.print("o");
 
   // set new temp
-  tft.setCursor(40, 30);
+  tft.setCursor(start_x, start_y);
   tft.setFont(&FreeSans9pt7b);
   tft.setTextColor(ILI9341_WHITE);
   tft.setTextSize(2);
-  tft.print(real_temp);
-  tft.print(" ");
-  tft.print("F");
-
-  //find position for degree symbol
-  if(real_temp < 100){
-    tft.setCursor(80, 12);
-  }
-  else {
-    tft.setCursor(100, 12);
-  }
-  tft.setTextSize(1);
-  tft.print("o");
+  tft.print(set_temp);
+//  tft.print(" ");
+//  tft.print("F");
+//
+//  //find position for degree symbol
+//  if(real_temp < 100){
+//    tft.setCursor(start_x+40, start_y-18);
+//  }
+//  else {
+//    tft.setCursor(start_x+60, start_y-18);
+//  }
+//  tft.setTextSize(1);
+//  tft.print("o");
 }
