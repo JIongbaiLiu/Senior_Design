@@ -19,6 +19,7 @@ int prev_set_temp = set_temp;
 bool currently_touched = false;
 bool auto_on = false;
 bool hold_on = false;
+int current_page = 0; // future work
 
 void setup() {
   
@@ -40,10 +41,7 @@ void setup() {
   //rotate
   uint8_t rotation = 3;
   tft.setRotation(rotation);
-
-  tft.fillRect(15, 0, 50, 40, ILI9341_WHITE);
   
-//  printMode();
   printSetTemp();
   printSetTempArrows();
   printDOWandTime();
@@ -52,8 +50,8 @@ void setup() {
 }
 
 void loop() {
-  //get real_temp
-  // update real_temp,, if changed or not??
+  //TODO: get real_temp
+  
   if(!ts.touched()){
     currently_touched = false;
     return;
@@ -70,31 +68,35 @@ void loop() {
       p.x = map(p.x, 0, 240, 240, 0);
       p.y = map(p.y, 0, 320, 320, 0);
 
-      // up arrow
-      int x_start = 200;
-      int y_start = 105;
+      switch(current_page) {
+        case 0:
+          // up arrow
+          int x_start = 200;
+          int y_start = 105;
 
-      // auto button
-      if (p.x >= x_start && p.x <= x_start+40 && p.y >= y_start && p.y <= y_start+100) {
-        auto_on = !auto_on;
-        drawBottomBar();
-      }
+          // auto button
+          if (p.x >= x_start && p.x <= x_start+40 && p.y >= y_start && p.y <= y_start+100) {
+            auto_on = !auto_on;
+            drawBottomBar();
+          }
 
-      // up arrow button
-      if (p.x >= 90 && p.x <= 110 && p.y >= 25 && p.y <= 55) {
-        if (!(set_temp > 89)) {
-          prev_set_temp = set_temp;
-          set_temp++;
-          printSetTemp();
-        }
-      }
+          // up arrow
+          if (p.x >= 90 && p.x <= 110 && p.y >= 25 && p.y <= 55) {
+            if (!(set_temp > 89)) {
+              prev_set_temp = set_temp;
+              set_temp++;
+              printSetTemp();
+            }
+          }
 
-      if (p.x >= 170 && p.x <= 190 && p.y >= 25 && p.y <= 55) {
-        if (!(set_temp < 41)) {
-          prev_set_temp = set_temp;
-          set_temp--;
-          printSetTemp();
-        }
+          // down arrow
+          if (p.x >= 170 && p.x <= 190 && p.y >= 25 && p.y <= 55) {
+            if (!(set_temp < 41)) {
+              prev_set_temp = set_temp;
+               set_temp--;
+               printSetTemp();
+            }
+           }
       }
       
     }
@@ -108,7 +110,6 @@ void loop() {
 
 // prints the main home screen 
 void printHomeScreen() {
-//  printMode();
   printSetTemp();
   printSetTempArrows();
   printDOWandTime();
