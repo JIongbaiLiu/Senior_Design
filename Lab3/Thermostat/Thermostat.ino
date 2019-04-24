@@ -17,6 +17,8 @@ int prev_real_temp = real_temp;
 int set_temp = 72;
 int prev_set_temp = set_temp;
 bool currently_touched = false;
+bool auto_on = true;
+bool hold_on = true;
 
 void setup() {
   
@@ -39,29 +41,14 @@ void setup() {
   uint8_t rotation = 3;
   tft.setRotation(rotation);
 
-  tft.drawLine(0, 200, 320, 200, ILI9341_WHITE);
-  tft.setCursor(10, 220);
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(1);
-  tft.print("Cool Mode");
-
-  tft.drawLine(120, 200, 120, 240, ILI9341_WHITE);
   
-  tft.setCursor(140, 225);
-  tft.print("Auto");
-
-  tft.drawLine(210, 200, 210, 240, ILI9341_WHITE);
-
-  tft.setCursor(250, 225);
-  tft.print("Hold");
   
 //  printMode();
   printSetTemp();
   printSetTempArrows();
   printDOWandTime();
-//  drawHouse();
   printCurrentTemp();
+  drawBottomBar();
 }
 
 void loop() {
@@ -102,13 +89,55 @@ void printHomeScreen() {
   printSetTemp();
   printSetTempArrows();
   printDOWandTime();
-//  drawHouse();
   printCurrentTemp();
+  drawBottomBar();
 }
 
 
-void drawBottomBar(){
-  tft.drawLine(0, 220, 320, 220, ILI9341_WHITE);
+void drawBottomBar() {
+
+  // horiz line
+  tft.drawLine(0, 200, 320, 200, ILI9341_WHITE);
+
+  // Cool/Heat status
+  tft.setCursor(10, 225);
+  tft.setFont(&FreeSans9pt7b);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(1);
+  tft.print("Cool Mode");
+
+  // first vert line
+  tft.drawLine(115, 201, 115, 240, ILI9341_BLACK);
+
+  // Auto status
+  tft.setCursor(135, 225);
+  if(auto_on) {
+    // draw inverted Auto
+    tft.fillRect(116, 201, 99, 40, ILI9341_WHITE);
+
+    
+    tft.setTextColor(ILI9341_BLACK);
+    tft.print("Auto on");
+  }
+  else {
+    tft.setTextColor(ILI9341_WHITE);
+    tft.print("Auto off");
+  }
+
+  // second vert line
+  tft.drawLine(215, 201, 215, 240, ILI9341_BLACK);
+
+  // Hold status
+   tft.setCursor(235, 225);
+  if(hold_on) {
+    tft.fillRect(216, 201, 109, 39, ILI9341_WHITE);
+    tft.setTextColor(ILI9341_BLACK);
+    tft.print("Hold on");
+  }
+  else {
+    tft.setTextColor(ILI9341_WHITE);
+    tft.print("Hold off");
+  }
 }
 
 // slated for deletion 
@@ -199,11 +228,7 @@ void printSetTemp() {
   tft.setTextColor(ILI9341_BLACK);
   tft.setTextSize(2);
   tft.print(prev_set_temp);
-//  tft.print(" ");
-//  tft.print("F");
-//  tft.setCursor(start_x+40, start_y-18);
-//  tft.setTextSize(1);
-//  tft.print("o");
+
 
   // set new temp
   tft.setCursor(start_x, start_y);
@@ -211,16 +236,4 @@ void printSetTemp() {
   tft.setTextColor(ILI9341_WHITE);
   tft.setTextSize(2);
   tft.print(set_temp);
-//  tft.print(" ");
-//  tft.print("F");
-//
-//  //find position for degree symbol
-//  if(real_temp < 100){
-//    tft.setCursor(start_x+40, start_y-18);
-//  }
-//  else {
-//    tft.setCursor(start_x+60, start_y-18);
-//  }
-//  tft.setTextSize(1);
-//  tft.print("o");
 }
