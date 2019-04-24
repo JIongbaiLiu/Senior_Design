@@ -17,8 +17,8 @@ int prev_real_temp = real_temp;
 int set_temp = 72;
 int prev_set_temp = set_temp;
 bool currently_touched = false;
-bool auto_on = true;
-bool hold_on = true;
+bool auto_on = false;
+bool hold_on = false;
 
 void setup() {
   
@@ -41,7 +41,7 @@ void setup() {
   uint8_t rotation = 3;
   tft.setRotation(rotation);
 
-  
+  tft.fillRect(15, 0, 50, 40, ILI9341_WHITE);
   
 //  printMode();
   printSetTemp();
@@ -65,14 +65,17 @@ void loop() {
       TS_Point p = ts.getPoint();
 
       // flip it around to match the screen.
+      // map(value, fromLow, fromHigh, toLow, toHigh)
+      // TODO: fix this, axis of TS_Point is different than the LCD's 
       p.x = map(p.x, 0, 240, 240, 0);
       p.y = map(p.y, 0, 320, 320, 0);
 
       // up arrow
-      if (p.x >= 210 && p.x <= 230 && p.y >= 95 && p.y <= 115) {
-        prev_set_temp = set_temp;
-        set_temp = 44;
-        printSetTemp();
+      int x_start = 200;
+      int y_start = 105;
+      if (p.x >= x_start && p.x <= x_start+40 && p.y >= y_start && p.y <= y_start+100) {
+        auto_on = !auto_on;
+        drawBottomBar();
       }
     }
     currently_touched = true;
@@ -106,50 +109,41 @@ void drawBottomBar() {
   tft.setTextSize(1);
   tft.print("Cool Mode");
 
-  // first vert line
-  tft.drawLine(115, 201, 115, 240, ILI9341_BLACK);
 
   // Auto status
   tft.setCursor(135, 225);
   if(auto_on) {
+    // first vert line
+    tft.drawLine(115, 201, 115, 240, ILI9341_BLACK);
     // draw inverted Auto
     tft.fillRect(116, 201, 99, 40, ILI9341_WHITE);
-
-    
     tft.setTextColor(ILI9341_BLACK);
     tft.print("Auto on");
   }
   else {
+    // first vert line
+    tft.drawLine(115, 201, 115, 240, ILI9341_WHITE);
+    tft.fillRect(116, 201, 99, 40, ILI9341_BLACK);
     tft.setTextColor(ILI9341_WHITE);
     tft.print("Auto off");
   }
 
-  // second vert line
-  tft.drawLine(215, 201, 215, 240, ILI9341_BLACK);
-
   // Hold status
    tft.setCursor(235, 225);
   if(hold_on) {
+    // second vert line
+    tft.drawLine(215, 201, 215, 240, ILI9341_BLACK);
     tft.fillRect(216, 201, 109, 39, ILI9341_WHITE);
     tft.setTextColor(ILI9341_BLACK);
     tft.print("Hold on");
   }
   else {
+    // second vert line
+    tft.drawLine(215, 201, 215, 240, ILI9341_WHITE);
     tft.setTextColor(ILI9341_WHITE);
     tft.print("Hold off");
   }
 }
-
-// slated for deletion 
-//// Prints the mode: AC, Heat, Auto
-//void printMode(){
-//  tft.setCursor(75, 85);
-//  tft.setFont(&FreeSans9pt7b);
-//  tft.setTextColor(ILI9341_WHITE);
-//  tft.setTextSize(1);
-//  tft.print("Cooling");
-//  tft.print(" to");
-//}
 
 // Prints the current temperature
 void printCurrentTemp(){
