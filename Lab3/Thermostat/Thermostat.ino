@@ -73,10 +73,30 @@ void loop() {
       // up arrow
       int x_start = 200;
       int y_start = 105;
+
+      // auto button
       if (p.x >= x_start && p.x <= x_start+40 && p.y >= y_start && p.y <= y_start+100) {
         auto_on = !auto_on;
         drawBottomBar();
       }
+
+      // up arrow button
+      if (p.x >= 90 && p.x <= 110 && p.y >= 25 && p.y <= 55) {
+        if (!(set_temp > 89)) {
+          prev_set_temp = set_temp;
+          set_temp++;
+          printSetTemp();
+        }
+      }
+
+      if (p.x >= 170 && p.x <= 190 && p.y >= 25 && p.y <= 55) {
+        if (!(set_temp < 41)) {
+          prev_set_temp = set_temp;
+          set_temp--;
+          printSetTemp();
+        }
+      }
+      
     }
     currently_touched = true;
   }
