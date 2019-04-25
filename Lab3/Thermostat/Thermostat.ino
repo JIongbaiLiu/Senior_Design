@@ -10,6 +10,7 @@
 #define TFT_DC 9
 #define BOXSIZE 10
 #define HOME_PAGE 0
+#define SETTINGS_PAGE 1
 
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
 Adafruit_FT6206 ts = Adafruit_FT6206();
@@ -39,7 +40,7 @@ void setup() {
 
   Serial.println("Capacitive touchscreen started");
   
-  tft.fillScreen(ILI9341_BLACK);
+  clearScreen();
 
   //rotate
   uint8_t rotation = 3;
@@ -47,8 +48,7 @@ void setup() {
 
   // sandbox space
 
-  drawSettingsScreen();
-//  printHomeScreen();
+  drawHomeScreen();
 }
 
 void loop() {
@@ -73,20 +73,25 @@ void loop() {
       switch(current_page) {
         case HOME_PAGE:
           // settings button
-//          if(p.x >= BOXSIZE *  && p.x <= BOXSIZE *  && p.y >= BOXSIZE *  && p.y <= BOXSIZE * ) {
-////            drawSettingsScreen();
-//          }
+          if(p.x >= BOXSIZE * 0 && p.x <= BOXSIZE * 4 && p.y >= BOXSIZE * 22 && p.y <= BOXSIZE * 32) {
+            current_page = SETTINGS_PAGE;
+            clearScreen();
+            drawSettingsScreen();
+            break;
+          }
 
           // auto button
           if (p.x >= BOXSIZE * 20 && p.x <= BOXSIZE * 24 && p.y >= BOXSIZE * 10.5 && p.y <= BOXSIZE * 20.5) {
             auto_on = !auto_on;
             drawBottomBar();
+            break;
           }
 
           // hold button
           if(p.x >= BOXSIZE * 20 && p.x <= BOXSIZE * 24 && p.y >= BOXSIZE * 0 && p.y <= BOXSIZE * 10) {
             hold_on = !hold_on;
             drawBottomBar();
+            break;
           }
 
           // up arrow
@@ -95,6 +100,7 @@ void loop() {
               prev_set_temp = set_temp;
               set_temp++;
               printSetTemp();
+              break;
             }
           }
 
@@ -104,8 +110,16 @@ void loop() {
               prev_set_temp = set_temp;
                set_temp--;
                printSetTemp();
+               break;
             }
-           }
+          }
+        case SETTINGS_PAGE:
+          if(p.x >= BOXSIZE * 0 && p.x <= BOXSIZE * 4 && p.y >= BOXSIZE * 22 && p.y <= BOXSIZE * 32) {
+            current_page = HOME_PAGE;
+            clearScreen();
+            drawHomeScreen();
+            break;
+          }
       }
       
     }
@@ -118,7 +132,7 @@ void loop() {
  */
 
 // prints the main home screen 
-void printHomeScreen() {
+void drawHomeScreen() {
   drawCornerButton("Settings");
   printSetTemp();
   printSetTempArrows();
@@ -151,6 +165,11 @@ void drawSettingsScreen() {
 /**
  * These helpers methods draw home screen items
  */
+
+// clear screen
+void clearScreen() {
+  tft.fillScreen(ILI9341_BLACK);
+}
 
 // modular corner button 
 void drawCornerButton(String label) {
