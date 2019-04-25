@@ -8,9 +8,12 @@
 
 #define TFT_CS 10
 #define TFT_DC 9
+#define BOXSIZE 10
+#define HOME_PAGE 0
 
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
 Adafruit_FT6206 ts = Adafruit_FT6206();
+
 
 int real_temp = 75;
 int prev_real_temp = real_temp;
@@ -41,12 +44,11 @@ void setup() {
   //rotate
   uint8_t rotation = 3;
   tft.setRotation(rotation);
-  
-  printSetTemp();
-  printSetTempArrows();
-  printDOWandTime();
-  printCurrentTemp();
-  drawBottomBar();
+
+  // sandbox space
+
+  drawSettingsScreen();
+//  printHomeScreen();
 }
 
 void loop() {
@@ -69,19 +71,26 @@ void loop() {
       p.y = map(p.y, 0, 320, 320, 0);
 
       switch(current_page) {
-        case 0:
-          // up arrow
-          int x_start = 200;
-          int y_start = 105;
+        case HOME_PAGE:
+          // settings button
+//          if(p.x >= BOXSIZE *  && p.x <= BOXSIZE *  && p.y >= BOXSIZE *  && p.y <= BOXSIZE * ) {
+////            drawSettingsScreen();
+//          }
 
           // auto button
-          if (p.x >= x_start && p.x <= x_start+40 && p.y >= y_start && p.y <= y_start+100) {
+          if (p.x >= BOXSIZE * 20 && p.x <= BOXSIZE * 24 && p.y >= BOXSIZE * 10.5 && p.y <= BOXSIZE * 20.5) {
             auto_on = !auto_on;
             drawBottomBar();
           }
 
+          // hold button
+          if(p.x >= BOXSIZE * 20 && p.x <= BOXSIZE * 24 && p.y >= BOXSIZE * 0 && p.y <= BOXSIZE * 10) {
+            hold_on = !hold_on;
+            drawBottomBar();
+          }
+
           // up arrow
-          if (p.x >= 90 && p.x <= 110 && p.y >= 25 && p.y <= 55) {
+          if (p.x >= BOXSIZE * 9 && p.x <= BOXSIZE * 11 && p.y >= BOXSIZE * 2.5 && p.y <= BOXSIZE * 5.5) {
             if (!(set_temp > 89)) {
               prev_set_temp = set_temp;
               set_temp++;
@@ -90,7 +99,7 @@ void loop() {
           }
 
           // down arrow
-          if (p.x >= 170 && p.x <= 190 && p.y >= 25 && p.y <= 55) {
+          if (p.x >= BOXSIZE * 17 && p.x <= BOXSIZE * 19 && p.y >= BOXSIZE * 2.5 && p.y <= BOXSIZE * 5.5) {
             if (!(set_temp < 41)) {
               prev_set_temp = set_temp;
                set_temp--;
@@ -105,11 +114,12 @@ void loop() {
 }
 
 /**
- * Helper functions
+ * Screen drawing methods. Some of these call other helper methods below
  */
 
 // prints the main home screen 
 void printHomeScreen() {
+  drawCornerButton("Settings");
   printSetTemp();
   printSetTempArrows();
   printDOWandTime();
@@ -117,9 +127,44 @@ void printHomeScreen() {
   drawBottomBar();
 }
 
+void drawSettingsScreen() {
+  drawCornerButton("Go Back");
 
+  tft.setCursor(BOXSIZE * 16, BOXSIZE *  2.5);
+  tft.setFont(&FreeSans9pt7b);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(1);
+  tft.print("Settings");
+  
+  tft.drawRect(BOXSIZE *  7, BOXSIZE * 7, BOXSIZE * 15, BOXSIZE * 5, ILI9341_WHITE);
+  tft.setCursor(BOXSIZE * 9, BOXSIZE * 10);
+  tft.setFont(&FreeSans9pt7b);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(1);
+  tft.print("Date & Time");
+
+  tft.drawRect(BOXSIZE * 7, BOXSIZE * 15, BOXSIZE * 15, BOXSIZE * 5, ILI9341_WHITE);
+  tft.setCursor(BOXSIZE * 9, BOXSIZE * 18);
+  tft.print("Set Points");
+}
+
+/**
+ * These helpers methods draw home screen items
+ */
+
+// modular corner button 
+void drawCornerButton(String label) {
+  tft.drawLine(BOXSIZE * 0, BOXSIZE * 4, BOXSIZE * 10, BOXSIZE * 4, ILI9341_WHITE);
+  tft.drawLine(BOXSIZE * 10, BOXSIZE * 4, BOXSIZE * 10, BOXSIZE * 0, ILI9341_WHITE);
+  tft.setCursor(15, 20);
+  tft.setFont(&FreeSans9pt7b);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(1);
+  tft.print(label);
+}
+
+// contains mode, auto status, hold status
 void drawBottomBar() {
-
   // horiz line
   tft.drawLine(0, 200, 320, 200, ILI9341_WHITE);
 
@@ -161,6 +206,7 @@ void drawBottomBar() {
   else {
     // second vert line
     tft.drawLine(215, 201, 215, 240, ILI9341_WHITE);
+    tft.fillRect(216, 201, 109, 39, ILI9341_BLACK);
     tft.setTextColor(ILI9341_WHITE);
     tft.print("Hold off");
   }
