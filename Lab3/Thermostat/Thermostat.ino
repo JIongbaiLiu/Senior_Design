@@ -9,6 +9,7 @@
 #define TFT_CS 10
 #define TFT_DC 9
 #define BOXSIZE 10
+#define BOLD 1
 #define HOME_PAGE 0
 #define SETTINGS_PAGE 1
 #define TIME_SETTINGS_PAGE 2
@@ -57,8 +58,8 @@ void setup() {
 
   // sandbox space
 
+//  drawHomeScreen();
   drawTimeSettingPage();
-  // drawHomeScreen();
 }
 
 void loop() {
@@ -156,40 +157,23 @@ void drawSettingsScreen() {
   drawCornerButton("Go Back");
 
   // title
-  tft.setCursor(BOXSIZE * 16, BOXSIZE *  2.5);
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(1);
-  tft.print("Settings");
+  printText(BOXSIZE * 16, BOXSIZE *  2.5, 1, "Settings", ILI9341_WHITE);
 
   // first button
   tft.drawRect(BOXSIZE *  7, BOXSIZE * 7, BOXSIZE * 15, BOXSIZE * 5, ILI9341_WHITE);
-  tft.setCursor(BOXSIZE * 9, BOXSIZE * 10);
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(1);
-  tft.print("Day & Time");
+  printText(BOXSIZE * 9, BOXSIZE * 10, 1, "Day & Time", ILI9341_WHITE);
 
   // second button
   tft.drawRect(BOXSIZE * 7, BOXSIZE * 15, BOXSIZE * 15, BOXSIZE * 5, ILI9341_WHITE);
-  tft.setCursor(BOXSIZE * 9, BOXSIZE * 18);
-  tft.print("Set Points");
+  printText(BOXSIZE * 9, BOXSIZE * 18, 1, "Set Points", ILI9341_WHITE);
 }
 
 void drawTimeSettingPage() {
   // Day label
-  tft.setCursor(BOXSIZE * 5, BOXSIZE * 2);
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(1);
-  tft.print("Day");
+  printText(BOXSIZE * 5, BOXSIZE * 2, 1, "Day", ILI9341_WHITE);
 
   // Time Label
-  tft.setCursor(BOXSIZE * 18.5, BOXSIZE * 2.5);
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(1);
-  tft.print("Time");
+  printText(BOXSIZE * 18.5, BOXSIZE * 2.5, 1, "Time", ILI9341_WHITE);
 
   // toggling arrows
   drawArrows(BOXSIZE * 5, BOXSIZE * 7.5);
@@ -197,44 +181,22 @@ void drawTimeSettingPage() {
   drawArrows(BOXSIZE * 22, BOXSIZE * 7.5);
 
   // day
-  tft.setCursor(30, 115);
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(2);
-  tft.print("Wed");
+  printText(BOXSIZE * 3, BOXSIZE * 11.5, 2, "Wed", ILI9341_WHITE);
 
   // hour
-  tft.setCursor(150, 115);
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(2);
-  tft.print("12");
+  printText(BOXSIZE * 15, BOXSIZE * 11.5, 2, "12", ILI9341_WHITE);
 
   // minute
-  tft.setCursor(215, 115);
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(2);
-  tft.print("00");
+  printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, "00", ILI9341_WHITE);
 
   
   // time colon
   tft.fillRect(203, 95, 4, 4, ILI9341_WHITE);
   tft.fillRect(203, 110, 4, 4, ILI9341_WHITE);
 
-  // REDO WITH SIZE 2 FONT
   // am vs pm
-  tft.setCursor(270, 85);
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(1);
-  tft.print("AM");
-  /*------------------------------*/
-  tft.setCursor(270, 135);
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(1);
-  tft.print("PM");
+  printText(BOXSIZE * 27, BOXSIZE * 8.5, 1, "AM", ILI9341_WHITE);
+  printText(BOXSIZE * 27, BOXSIZE * 13.5, 1, "PM", ILI9341_WHITE);
 
   // selected line
   if (am_selected) {
@@ -262,8 +224,17 @@ void clearScreen() {
   tft.fillScreen(ILI9341_BLACK);
 }
 
-// prints text according to standards within the context of this app
+// prints text according to loose design patterns of this app
 void printText(int x_start, int y_start, int text_size, String text, uint16_t color) {
+  tft.setCursor(x_start, y_start);
+  tft.setFont(&FreeSans9pt7b);
+  tft.setTextColor(color);
+  tft.setTextSize(text_size);
+  tft.print(text);
+}
+
+void printText(int x_start, int y_start, int text_size, String text, uint16_t color, bool Bold) {
+  tft.setFont(&FreeSansBold9pt7b);
   tft.setCursor(x_start, y_start);
   tft.setFont(&FreeSans9pt7b);
   tft.setTextColor(color);
@@ -275,11 +246,7 @@ void printText(int x_start, int y_start, int text_size, String text, uint16_t co
 void drawCornerButton(String label) {
   tft.drawLine(BOXSIZE * 0, BOXSIZE * 4, BOXSIZE * 10, BOXSIZE * 4, ILI9341_WHITE);
   tft.drawLine(BOXSIZE * 10, BOXSIZE * 4, BOXSIZE * 10, BOXSIZE * 0, ILI9341_WHITE);
-  tft.setCursor(15, 20);
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(1);
-  tft.print(label);
+  printText(BOXSIZE * 1.5, BOXSIZE * 2, 1, label, ILI9341_WHITE);
 }
 
 // contains mode, auto status, hold status
@@ -288,30 +255,28 @@ void drawBottomBar() {
   tft.drawLine(0, 200, 320, 200, ILI9341_WHITE);
 
   // Cool/Heat status
-  tft.setCursor(10, 225);
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(1);
-  tft.print("Cool Mode");
-
+  printText(BOXSIZE, BOXSIZE * 22.5, 1, "Cool Mode", ILI9341_WHITE);
 
   // Auto status
-  tft.setCursor(135, 225);
+  String label;
+  uint16_t color;
   if(auto_on) {
     // first vert line
     tft.drawLine(115, 201, 115, 240, ILI9341_BLACK);
-    // draw inverted Auto
+    
+    // draw inverted box
     tft.fillRect(116, 201, 99, 40, ILI9341_WHITE);
-    tft.setTextColor(ILI9341_BLACK);
-    tft.print("Auto on");
+    color = ILI9341_BLACK;
+    label = "Auto on";
   }
   else {
     // first vert line
     tft.drawLine(115, 201, 115, 240, ILI9341_WHITE);
     tft.fillRect(116, 201, 99, 40, ILI9341_BLACK);
-    tft.setTextColor(ILI9341_WHITE);
-    tft.print("Auto off");
+    color = ILI9341_WHITE;
+    label = "Auto off";
   }
+  printText(BOXSIZE * 13.5, BOXSIZE * 22.5, 1, label, color);
 
   // Hold status
    tft.setCursor(235, 225);
@@ -319,16 +284,17 @@ void drawBottomBar() {
     // second vert line
     tft.drawLine(215, 201, 215, 240, ILI9341_BLACK);
     tft.fillRect(216, 201, 109, 39, ILI9341_WHITE);
-    tft.setTextColor(ILI9341_BLACK);
-    tft.print("Hold on");
+    color = ILI9341_BLACK;
+    label = "Hold on";
   }
   else {
     // second vert line
     tft.drawLine(215, 201, 215, 240, ILI9341_WHITE);
     tft.fillRect(216, 201, 109, 39, ILI9341_BLACK);
-    tft.setTextColor(ILI9341_WHITE);
-    tft.print("Hold off");
+    color = ILI9341_WHITE;
+    label = "Hold off";
   }
+  printText(BOXSIZE * 23.5, BOXSIZE * 22.5, 1, label, color);
 }
 
 // Prints the current temperature
@@ -373,25 +339,7 @@ void drawArrows(int x_start, int y_start) {
 
 // Prints the Day of Week and current time
 void printDOWandTime(){
-  tft.setCursor(200, 15);
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(1);
-  tft.print("Wed, 12:00AM");
-}
-
-// Draws the house icon
-void drawHouse(){
-  // rest of house
-  int house_x = 11;
-  int house_y = 6;
-  tft.drawLine(house_x, house_y, house_x, house_y+10, ILI9341_WHITE);
-  tft.drawLine(house_x+9, house_y, house_x+9, house_y+10, ILI9341_WHITE);
-  tft.drawLine(house_x, house_y+10, house_x+8, house_y+10, ILI9341_WHITE);
-  
-  // roof
-  tft.drawLine(house_x+4, house_y-6, house_x-3, house_y+1, ILI9341_WHITE);
-  tft.drawLine(house_x+4, house_y-6, house_x+11, house_y+1, ILI9341_WHITE);
+  printText(BOXSIZE * 20, BOXSIZE * 1.5, 1, "Wed, 12:00AM", ILI9341_WHITE);
 }
 
 // Prints the set temperature
@@ -405,7 +353,6 @@ void printSetTemp() {
   tft.setTextColor(ILI9341_BLACK);
   tft.setTextSize(2);
   tft.print(prev_set_temp);
-
 
   // set new temp
   tft.setCursor(start_x, start_y);
