@@ -331,16 +331,8 @@ void printSetTemp() {
   int start_y = 130;
   
   // "clear" what is there now
-  tft.setCursor(start_x, start_y);
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_BLACK);
-  tft.setTextSize(2);
-  tft.print(prev_set_temp);
+  printText(BOXSIZE * 26, BOXSIZE * 13, 2, String(prev_set_temp), ILI9341_BLACK);
 
   // set new temp
-  tft.setCursor(start_x, start_y);
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(2);
-  tft.print(set_temp);
+  printText(BOXSIZE * 26, BOXSIZE * 13, 2, String(set_temp), ILI9341_WHITE);
 }
