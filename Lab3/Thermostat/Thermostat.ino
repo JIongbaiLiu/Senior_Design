@@ -245,8 +245,12 @@ void drawTimeSettingPage() {
   }
 
   // save button
+  tft.drawRect(45, 190, 85, 35, ILI9341_WHITE);
+  printText(68, 213, 1, "Save", ILI9341_WHITE);
   
   // cancel button
+  tft.drawRect(165, 190, 85, 35, ILI9341_WHITE);
+  printText(178, 213, 1, "Cancel", ILI9341_WHITE);
 }
 
 /**
@@ -256,6 +260,15 @@ void drawTimeSettingPage() {
 // clear screen
 void clearScreen() {
   tft.fillScreen(ILI9341_BLACK);
+}
+
+// prints text according to standards within the context of this app
+void printText(int x_start, int y_start, int text_size, String text, uint16_t color) {
+  tft.setCursor(x_start, y_start);
+  tft.setFont(&FreeSans9pt7b);
+  tft.setTextColor(color);
+  tft.setTextSize(text_size);
+  tft.print(text);
 }
 
 // modular corner button 
