@@ -58,8 +58,7 @@ void setup() {
 
   // sandbox space
 
-//  drawHomeScreen();
-  drawTimeSettingPage();
+  drawHomeScreen();
 }
 
 void loop() {
@@ -236,7 +235,6 @@ void printText(int x_start, int y_start, int text_size, String text, uint16_t co
 void printText(int x_start, int y_start, int text_size, String text, uint16_t color, bool Bold) {
   tft.setFont(&FreeSansBold9pt7b);
   tft.setCursor(x_start, y_start);
-  tft.setFont(&FreeSans9pt7b);
   tft.setTextColor(color);
   tft.setTextSize(text_size);
   tft.print(text);
@@ -303,29 +301,14 @@ void printCurrentTemp(){
   int y_start = 145;
   
   // "clear" what is there now
-  tft.setCursor(x_start, y_start);
-  tft.setFont(&FreeSansBold9pt7b);
-  tft.setTextColor(ILI9341_BLACK);
-  tft.setTextSize(4);
-  tft.println(prev_real_temp);
-  tft.setCursor(x_start+85, y_start-40);
-  tft.setTextSize(1);
-  tft.println("o");
-  tft.setCursor(x_start+97, y_start-25);
-  tft.setTextSize(2);
-  tft.println("F");
+  printText(BOXSIZE * 8, BOXSIZE * 14.5, 4, String(prev_real_temp), ILI9341_BLACK, BOLD);
+  printText(BOXSIZE * 16.5, BOXSIZE * 10.5, 1, "o", ILI9341_BLACK, BOLD);
+  printText(BOXSIZE * 17.7, BOXSIZE * 12, 2, "F", ILI9341_BLACK, BOLD);
 
   // set new temp
-  tft.setCursor(x_start, y_start);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(4);
-  tft.println(real_temp);
-  tft.setCursor(x_start+85, y_start-40);
-  tft.setTextSize(1);
-  tft.println("o");
-  tft.setCursor(x_start+97, y_start-25);
-  tft.setTextSize(2);
-  tft.println("F");
+  printText(BOXSIZE * 8, BOXSIZE * 14.5, 4, String(real_temp), ILI9341_WHITE, BOLD);
+  printText(BOXSIZE * 16.5, BOXSIZE * 10.5, 1, "o", ILI9341_WHITE, BOLD);
+  printText(BOXSIZE * 17.7, BOXSIZE * 12, 2, "F", ILI9341_WHITE, BOLD);
 }
 
 // draws two arrows: one up, one down
