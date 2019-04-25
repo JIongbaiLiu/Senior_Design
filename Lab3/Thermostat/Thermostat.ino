@@ -11,11 +11,17 @@
 #define BOXSIZE 10
 #define HOME_PAGE 0
 #define SETTINGS_PAGE 1
+#define TIME_SETTINGS_PAGE 2
 
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
 Adafruit_FT6206 ts = Adafruit_FT6206();
 
 
+// general vars
+int current_page = HOME_PAGE;
+const char* dayNames[] = {"Sun", "Mon", "Tues", "Wed", "Thu", "Fri", "Sat"};
+
+// home page vars
 int real_temp = 75;
 int prev_real_temp = real_temp;
 int set_temp = 72;
@@ -23,7 +29,10 @@ int prev_set_temp = set_temp;
 bool currently_touched = false;
 bool auto_on = false;
 bool hold_on = false;
-int current_page = 0; // future work
+
+// time setting page vars
+bool am_selected = false;
+
 
 void setup() {
   
@@ -48,7 +57,8 @@ void setup() {
 
   // sandbox space
 
-  drawHomeScreen();
+  drawTimeSettingPage();
+  // drawHomeScreen();
 }
 
 void loop() {
@@ -113,6 +123,7 @@ void loop() {
                break;
             }
           }
+          
         case SETTINGS_PAGE:
           if(p.x >= BOXSIZE * 0 && p.x <= BOXSIZE * 4 && p.y >= BOXSIZE * 22 && p.y <= BOXSIZE * 32) {
             current_page = HOME_PAGE;
@@ -135,7 +146,7 @@ void loop() {
 void drawHomeScreen() {
   drawCornerButton("Settings");
   printSetTemp();
-  printSetTempArrows();
+  drawArrows(265, 90);
   printDOWandTime();
   printCurrentTemp();
   drawBottomBar();
@@ -144,22 +155,98 @@ void drawHomeScreen() {
 void drawSettingsScreen() {
   drawCornerButton("Go Back");
 
+  // title
   tft.setCursor(BOXSIZE * 16, BOXSIZE *  2.5);
   tft.setFont(&FreeSans9pt7b);
   tft.setTextColor(ILI9341_WHITE);
   tft.setTextSize(1);
   tft.print("Settings");
-  
+
+  // first button
   tft.drawRect(BOXSIZE *  7, BOXSIZE * 7, BOXSIZE * 15, BOXSIZE * 5, ILI9341_WHITE);
   tft.setCursor(BOXSIZE * 9, BOXSIZE * 10);
   tft.setFont(&FreeSans9pt7b);
   tft.setTextColor(ILI9341_WHITE);
   tft.setTextSize(1);
-  tft.print("Date & Time");
+  tft.print("Day & Time");
 
+  // second button
   tft.drawRect(BOXSIZE * 7, BOXSIZE * 15, BOXSIZE * 15, BOXSIZE * 5, ILI9341_WHITE);
   tft.setCursor(BOXSIZE * 9, BOXSIZE * 18);
   tft.print("Set Points");
+}
+
+void drawTimeSettingPage() {
+  // Day label
+  tft.setCursor(BOXSIZE * 5, BOXSIZE * 2);
+  tft.setFont(&FreeSans9pt7b);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(1);
+  tft.print("Day");
+
+  // Time Label
+  tft.setCursor(BOXSIZE * 18.5, BOXSIZE * 2.5);
+  tft.setFont(&FreeSans9pt7b);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(1);
+  tft.print("Time");
+
+  // toggling arrows
+  drawArrows(BOXSIZE * 5, BOXSIZE * 7.5);
+  drawArrows(BOXSIZE * 16, BOXSIZE * 7.5);
+  drawArrows(BOXSIZE * 22, BOXSIZE * 7.5);
+
+  // day
+  tft.setCursor(30, 115);
+  tft.setFont(&FreeSans9pt7b);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(2);
+  tft.print("Wed");
+
+  // hour
+  tft.setCursor(150, 115);
+  tft.setFont(&FreeSans9pt7b);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(2);
+  tft.print("12");
+
+  // minute
+  tft.setCursor(215, 115);
+  tft.setFont(&FreeSans9pt7b);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(2);
+  tft.print("00");
+
+  
+  // time colon
+  tft.fillRect(203, 95, 4, 4, ILI9341_WHITE);
+  tft.fillRect(203, 110, 4, 4, ILI9341_WHITE);
+
+  // REDO WITH SIZE 2 FONT
+  // am vs pm
+  tft.setCursor(270, 85);
+  tft.setFont(&FreeSans9pt7b);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(1);
+  tft.print("AM");
+  /*------------------------------*/
+  tft.setCursor(270, 135);
+  tft.setFont(&FreeSans9pt7b);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(1);
+  tft.print("PM");
+
+  // selected line
+  if (am_selected) {
+    tft.fillRect(270, 90, 27, 2, ILI9341_WHITE);
+  }
+  else {
+    tft.fillRect(270, 140, 27, 2, ILI9341_WHITE);
+  }
+
+  // save button
+  
+  // cancel button
 }
 
 /**
@@ -262,11 +349,8 @@ void printCurrentTemp(){
   tft.println("F");
 }
 
-// Prints the temp toggling arrows
-void printSetTempArrows() {
-  int x_start = 265;
-  int y_start = 90;
-
+// draws two arrows: one up, one down
+void drawArrows(int x_start, int y_start) {
   // up
   tft.fillTriangle(x_start, y_start, x_start+15, y_start-20, x_start+30, y_start, ILI9341_WHITE);  //x0, y0, x1, y1, x2, y2, color
 
