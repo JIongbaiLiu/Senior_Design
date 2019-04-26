@@ -4,7 +4,6 @@
 #include <Fonts/FreeSans9pt7b.h>
 #include <Fonts/FreeSansBold9pt7b.h>
 #include <Adafruit_FT6206.h>
-#include "RTClib.h"
 
 
 #define TFT_CS 10
@@ -20,8 +19,6 @@
 int current_page = HOME_PAGE;
 const char* dayNames[7] = {"Sun", "Mon", "Tues", "Wed", "Thu", "Fri", "Sat"};
 const char* am_pm[2] = {"AM", "PM"};
-RTC_DS3231 rtc;
-DateTime Clock;
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
 Adafruit_FT6206 ts = Adafruit_FT6206();
 
@@ -42,6 +39,11 @@ int current_hour = 6;
 int previous_hour = current_hour;
 int current_minute = 12;
 int previous_minute = current_minute;
+
+//set point page vars
+int current_set_point = 2;
+int current_day_type = 1;
+const char* day_type[2] = {"Week", "Weekend"};
 
 
 void setup() {
@@ -66,8 +68,8 @@ void setup() {
   tft.setRotation(rotation);
 
   //---------sandbox space-----------
-  drawTimeSettingPage();
-  current_page = TIME_SETTINGS_PAGE;
+  drawSetPointsPage();
+  current_page = SET_POINTS_PAGE;
   //---------------------------------
 
 //  drawHomeScreen();
@@ -401,13 +403,53 @@ void drawTimeSettingPage() {
   printText(178, 213, 1, "Cancel", ILI9341_WHITE);
 }
 
-// TODO: this
 void drawSetPointsPage() {
-  printText(BOXSIZE * 7, BOXSIZE * 10, 1, "Under Construction!", ILI9341_WHITE);
+  drawCornerButton("Go Back");
+  printText(BOXSIZE * 15, BOXSIZE *  2.5, 1, "Your Set Points", ILI9341_WHITE);  // title
+
+  // week/weekend toggling
+  drawArrows(BOXSIZE * 3.5, BOXSIZE * 10);
+  //day_type[current_day_type]
+  printText(BOXSIZE * 2, BOXSIZE * 13.5, 1, day_type[current_day_type], ILI9341_WHITE);
+
+  // TODO: draw this box based on  current selected set point's data
+  tft.drawRect(BOXSIZE * 13, BOXSIZE * 9, BOXSIZE * 17, BOXSIZE * 7, ILI9341_WHITE);
+
+  printText(BOXSIZE * 14, BOXSIZE * 11, 1, "11:00AM-12:00PM", ILI9341_WHITE);
+  printText(BOXSIZE * 19.5, BOXSIZE * 14.7, 2, "72", ILI9341_WHITE);
+
+  // set point number
+  tft.drawRect(BOXSIZE * 13, BOXSIZE * 13.7, 20, 23, ILI9341_WHITE);
+  printText(BOXSIZE * 13.5, BOXSIZE * 15.4, 1, String(current_set_point), ILI9341_WHITE);
+
+  // draw up/down arrow
+  if(current_set_point == 1) {
+    // down
+    int x_start = BOXSIZE * 20;
+    int y_start = BOXSIZE * 18;
+    tft.fillTriangle(x_start, y_start, x_start+15, y_start+20, x_start+30, y_start, ILI9341_WHITE);
+  }
+  else if (current_set_point == 4){
+    // up
+    int x_start = BOXSIZE * 20;
+    int y_start = BOXSIZE * 7;
+    tft.fillTriangle(x_start, y_start, x_start+15, y_start-20, x_start+30, y_start, ILI9341_WHITE); 
+  }
+  else {
+    // up
+    int x_start = BOXSIZE * 20;
+    int y_start = BOXSIZE * 7;
+    tft.fillTriangle(x_start, y_start, x_start+15, y_start-20, x_start+30, y_start, ILI9341_WHITE);
+
+    // down
+    x_start = BOXSIZE * 20;
+    y_start = BOXSIZE * 18;
+    tft.fillTriangle(x_start, y_start, x_start+15, y_start+20, x_start+30, y_start, ILI9341_WHITE);
+  }
 }
 
 /**
- * These helpers methods draw home screen items
+ * General helper methods
  */
 
 // clear screen
@@ -452,7 +494,10 @@ void updateText(int prev_x_start, int y_start, int new_x_start, int text_size, S
 
 // TODO: updateText for bold fonts
 
-
+/**
+ * These helper methods draw home screen items
+ */
+ 
 // modular corner button 
 void drawCornerButton(String label) {
   tft.drawLine(BOXSIZE * 0, BOXSIZE * 4, BOXSIZE * 10, BOXSIZE * 4, ILI9341_WHITE);
