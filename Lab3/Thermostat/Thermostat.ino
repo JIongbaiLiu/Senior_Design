@@ -275,6 +275,22 @@ void loop() {
           }
           break;
         }
+
+        // am
+        if(p.x >= BOXSIZE * 7.5 && p.x <= BOXSIZE * 9.5 && p.y >= BOXSIZE * 1.5 && p.y <= BOXSIZE * 5.5) {
+          am_selected = true;
+          tft.fillRect(270, 90, 27, 2, ILI9341_WHITE);   // am line on
+          tft.fillRect(270, 140, 27, 2, ILI9341_BLACK);  // pm line off
+          break;
+        }
+
+        // pm
+        if(p.x >= BOXSIZE * 12.5 && p.x <= BOXSIZE * 14.5 && p.y >= BOXSIZE * 1.5 && p.y <= BOXSIZE * 5.5) {
+          am_selected = false;
+          tft.fillRect(270, 90, 27, 2, ILI9341_BLACK);   // am line off
+          tft.fillRect(270, 140, 27, 2, ILI9341_WHITE);  // pm line on
+          break;
+        }
       }
     }
     currently_touched = true;
