@@ -40,7 +40,7 @@ int current_day = 0;
 int previous_day = current_day;
 int current_hour = 6;
 int previous_hour = current_hour;
-int current_minute = 5;
+int current_minute = 12;
 int previous_minute = current_minute;
 
 
@@ -245,6 +245,7 @@ void loop() {
             if(current_minute > 9 && previous_minute != 9) {
               updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(previous_minute), String(current_minute));
             }
+            // special case going from 9 to 10
             else if(current_minute > 9 && previous_minute == 9){
               updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(previous_minute), String(current_minute));
             }
@@ -257,6 +258,21 @@ void loop() {
 
         // minute down arrow
         if(p.x >= BOXSIZE * 14 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 10) {
+          if(current_minute > 0) {
+            previous_minute = current_minute;
+            current_minute--;
+            
+            if(current_minute > 9 && previous_minute != 10) {
+              updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(previous_minute), String(current_minute));
+            }
+            // special case going from 10 to 9
+            else if(current_minute == 9 && previous_minute == 10){
+              updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(previous_minute), String ("0") + String(current_minute));
+            }
+            else {
+              updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(previous_minute), String ("0") + String(current_minute));
+            }
+          }
           break;
         }
       }
