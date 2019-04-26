@@ -4,6 +4,7 @@
 #include <Fonts/FreeSans9pt7b.h>
 #include <Fonts/FreeSansBold9pt7b.h>
 #include <Adafruit_FT6206.h>
+#include "RTClib.h"
 
 
 #define TFT_CS 10
@@ -14,13 +15,14 @@
 #define SETTINGS_PAGE 1
 #define TIME_SETTINGS_PAGE 2
 
-Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
-Adafruit_FT6206 ts = Adafruit_FT6206();
-
-
 // general vars
 int current_page = HOME_PAGE;
-const char* dayNames[] = {"Sun", "Mon", "Tues", "Wed", "Thu", "Fri", "Sat"};
+const char* dayNames[7] = {"Sun", "Mon", "Tues", "Wed", "Thu", "Fri", "Sat"};
+const char* am_pm[2] = {"AM", "PM"};
+RTC_DS3231 rtc;
+DateTime Clock;
+Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
+Adafruit_FT6206 ts = Adafruit_FT6206();
 
 // home page vars
 int real_temp = 75;
@@ -33,6 +35,9 @@ bool hold_on = false;
 
 // time setting page vars
 bool am_selected = false;
+int current_day = 0;
+int current_hour = 12;
+int current_minute = 5;
 
 
 void setup() {
@@ -56,7 +61,9 @@ void setup() {
   uint8_t rotation = 3;
   tft.setRotation(rotation);
 
-  // sandbox space
+  //---------sandbox space-----------
+
+  //---------------------------------
 
   drawHomeScreen();
 }
@@ -125,12 +132,17 @@ void loop() {
           }
           
         case SETTINGS_PAGE:
+          // back button
           if(p.x >= BOXSIZE * 0 && p.x <= BOXSIZE * 4 && p.y >= BOXSIZE * 22 && p.y <= BOXSIZE * 32) {
             current_page = HOME_PAGE;
             clearScreen();
             drawHomeScreen();
             break;
           }
+
+          // TODO: time settings
+
+          // TODO: set points settings
       }
       
     }
@@ -180,15 +192,24 @@ void drawTimeSettingPage() {
   drawArrows(BOXSIZE * 22, BOXSIZE * 7.5);
 
   // day
-  printText(BOXSIZE * 3, BOXSIZE * 11.5, 2, "Wed", ILI9341_WHITE);
+  printText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[current_day]), ILI9341_WHITE);
 
   // hour
-  printText(BOXSIZE * 15, BOXSIZE * 11.5, 2, "12", ILI9341_WHITE);
-
-  // minute
-  printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, "00", ILI9341_WHITE);
-
+  if(current_hour > 9) {
+    printText(BOXSIZE * 15, BOXSIZE * 11.5, 2, String(current_hour), ILI9341_WHITE);
+  }
+  else {
+    printText(BOXSIZE * 16.5, BOXSIZE * 11.5, 2, String(current_hour), ILI9341_WHITE);
+  }
   
+  // minute
+  if(current_minute > 9) {
+    printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(current_minute), ILI9341_WHITE);
+  }
+  else {
+    printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(current_minute), ILI9341_WHITE);
+  }
+
   // time colon
   tft.fillRect(203, 95, 4, 4, ILI9341_WHITE);
   tft.fillRect(203, 110, 4, 4, ILI9341_WHITE);
@@ -297,9 +318,6 @@ void drawBottomBar() {
 
 // Prints the current temperature
 void printCurrentTemp(){
-  int x_start = 80;
-  int y_start = 145;
-  
   // "clear" what is there now
   printText(BOXSIZE * 8, BOXSIZE * 14.5, 4, String(prev_real_temp), ILI9341_BLACK, BOLD);
   printText(BOXSIZE * 16.5, BOXSIZE * 10.5, 1, "o", ILI9341_BLACK, BOLD);
@@ -322,6 +340,7 @@ void drawArrows(int x_start, int y_start) {
 
 // Prints the Day of Week and current time
 void printDOWandTime(){
+  //updateTimeHomePage();
   printText(BOXSIZE * 20, BOXSIZE * 1.5, 1, "Wed, 12:00AM", ILI9341_WHITE);
 }
 
@@ -335,4 +354,11 @@ void printSetTemp() {
 
   // set new temp
   printText(BOXSIZE * 26, BOXSIZE * 13, 2, String(set_temp), ILI9341_WHITE);
+}
+
+void updateTimeHomePage() {
+  Clock = rtc.now();
+  String dateTime = String(dayNames[Clock.dayOfTheWeek()]) + String(", ") + String(Clock.hour())
+                    + String(":") + String(Clock.minute()) + String(am_pm[am_selected]);
+  printText(BOXSIZE * 20, BOXSIZE * 1.5, 1, dateTime, ILI9341_WHITE);
 }
