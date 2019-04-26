@@ -10,6 +10,11 @@
 #define TFT_DC 9
 #define BOXSIZE 10
 #define BOLD 1
+#define ARROW_WIDTH 30
+#define ARROW_HEIGHT 20
+#define ARROWS_OFFSET 60
+
+// pages
 #define HOME_PAGE 0
 #define SETTINGS_PAGE 1
 #define TIME_SETTINGS_PAGE 2
@@ -41,7 +46,7 @@ int current_minute = 12;
 int previous_minute = current_minute;
 
 //set point page vars
-int current_set_point = 2;
+int current_set_point = 3;
 int current_day_type = 1;
 const char* day_type[2] = {"Week", "Weekend"};
 
@@ -91,7 +96,6 @@ void loop() {
 
       // flip it around to match the screen.
       // map(value, fromLow, fromHigh, toLow, toHigh)
-      // TODO: fix this, axis of TS_Point is different than the LCD's 
       p.x = map(p.x, 0, 240, 240, 0);
       p.y = map(p.y, 0, 320, 320, 0);
 
@@ -326,7 +330,7 @@ void loop() {
 void drawHomeScreen() {
   drawCornerButton("Settings");
   printSetTemp();
-  drawArrows(265, 90);
+  drawArrows(BOXSIZE * 26.5, BOXSIZE * 9, ARROW_WIDTH, ARROW_HEIGHT, ARROWS_OFFSET, ILI9341_WHITE);
   printDOWandTime();
   printCurrentTemp();
   drawBottomBar();
@@ -355,9 +359,9 @@ void drawTimeSettingPage() {
   printText(BOXSIZE * 18.5, BOXSIZE * 2.5, 1, "Time", ILI9341_WHITE);
 
   // toggling arrows
-  drawArrows(BOXSIZE * 5, BOXSIZE * 7.5);   // day
-  drawArrows(BOXSIZE * 16, BOXSIZE * 7.5);  // hour
-  drawArrows(BOXSIZE * 22, BOXSIZE * 7.5);  // minute
+  drawArrows(BOXSIZE * 5, BOXSIZE * 7.5, ARROW_WIDTH, ARROW_HEIGHT, ARROWS_OFFSET, ILI9341_WHITE);   // day
+  drawArrows(BOXSIZE * 16, BOXSIZE * 7.5, ARROW_WIDTH, ARROW_HEIGHT, ARROWS_OFFSET, ILI9341_WHITE);  // hour
+  drawArrows(BOXSIZE * 22, BOXSIZE * 7.5, ARROW_WIDTH, ARROW_HEIGHT, ARROWS_OFFSET, ILI9341_WHITE);  // minute
 
   // day
   printText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[current_day]), ILI9341_WHITE);
@@ -408,7 +412,7 @@ void drawSetPointsPage() {
   printText(BOXSIZE * 15, BOXSIZE *  2.5, 1, "Your Set Points", ILI9341_WHITE);  // title
 
   // week/weekend toggling
-  drawArrows(BOXSIZE * 3.5, BOXSIZE * 10);
+  drawArrows(BOXSIZE * 3.5, BOXSIZE * 10, 30, 20, 60, ILI9341_WHITE);
   //day_type[current_day_type]
   printText(BOXSIZE * 2, BOXSIZE * 13.5, 1, day_type[current_day_type], ILI9341_WHITE);
 
@@ -425,26 +429,19 @@ void drawSetPointsPage() {
   // draw up/down arrow
   if(current_set_point == 1) {
     // down
-    int x_start = BOXSIZE * 20;
-    int y_start = BOXSIZE * 18;
-    tft.fillTriangle(x_start, y_start, x_start+15, y_start+20, x_start+30, y_start, ILI9341_WHITE);
+    drawArrow(BOXSIZE * 20, BOXSIZE * 18, ARROW_WIDTH, ARROW_HEIGHT, ILI9341_WHITE);
   }
   else if (current_set_point == 4){
     // up
-    int x_start = BOXSIZE * 20;
-    int y_start = BOXSIZE * 7;
-    tft.fillTriangle(x_start, y_start, x_start+15, y_start-20, x_start+30, y_start, ILI9341_WHITE); 
+    drawArrow(BOXSIZE * 20, BOXSIZE * 7, ARROW_WIDTH, -ARROW_HEIGHT, ILI9341_WHITE);
   }
   else {
-    // up
-    int x_start = BOXSIZE * 20;
-    int y_start = BOXSIZE * 7;
-    tft.fillTriangle(x_start, y_start, x_start+15, y_start-20, x_start+30, y_start, ILI9341_WHITE);
-
-    // down
-    x_start = BOXSIZE * 20;
-    y_start = BOXSIZE * 18;
-    tft.fillTriangle(x_start, y_start, x_start+15, y_start+20, x_start+30, y_start, ILI9341_WHITE);
+    drawArrows(BOXSIZE * 20, BOXSIZE * 7, ARROW_WIDTH, ARROW_HEIGHT, BOXSIZE * 11, ILI9341_WHITE);
+//    // up
+//    drawArrow(BOXSIZE * 20, BOXSIZE * 7, 30, -20, ILI9341_WHITE);
+//
+//    // down
+//    drawArrow(BOXSIZE * 20, BOXSIZE * 18, 30, 20, ILI9341_WHITE);
   }
 }
 
@@ -494,10 +491,21 @@ void updateText(int prev_x_start, int y_start, int new_x_start, int text_size, S
 
 // TODO: updateText for bold fonts
 
-/**
- * These helper methods draw home screen items
- */
- 
+// draws an arrow
+void drawArrow(int x_start, int y_start, int x_width, int y_height, uint16_t color) {
+  tft.fillTriangle(x_start, y_start, x_start+(x_width/2), y_start+y_height, x_start+x_width, y_start, color);
+}
+
+// draws two identical arrows: one up, one down
+void drawArrows(int x_start, int y_start, int x_width, int y_height, int y_offset, uint16_t color ) {
+//  int y_offset = 60;
+  // up
+  drawArrow(x_start, y_start, x_width, -y_height, ILI9341_WHITE);
+
+  // down
+  drawArrow(x_start, y_start+y_offset, x_width, y_height, ILI9341_WHITE);
+}
+
 // modular corner button 
 void drawCornerButton(String label) {
   tft.drawLine(BOXSIZE * 0, BOXSIZE * 4, BOXSIZE * 10, BOXSIZE * 4, ILI9341_WHITE);
@@ -505,6 +513,9 @@ void drawCornerButton(String label) {
   printText(BOXSIZE * 1.5, BOXSIZE * 2, 1, label, ILI9341_WHITE);
 }
 
+/**
+ * These helper methods draw home screen items
+ */
 // contains mode, auto status, hold status
 void drawBottomBar() {
   // horiz line
@@ -564,15 +575,6 @@ void printCurrentTemp(){
   printText(BOXSIZE * 8, BOXSIZE * 14.5, 4, String(real_temp), ILI9341_WHITE, BOLD);
   printText(BOXSIZE * 16.5, BOXSIZE * 10.5, 1, "o", ILI9341_WHITE, BOLD);
   printText(BOXSIZE * 17.7, BOXSIZE * 12, 2, "F", ILI9341_WHITE, BOLD);
-}
-
-// draws two arrows: one up, one down
-void drawArrows(int x_start, int y_start) {
-  // up
-  tft.fillTriangle(x_start, y_start, x_start+15, y_start-20, x_start+30, y_start, ILI9341_WHITE);  //x0, y0, x1, y1, x2, y2, color
-
-  // down
-  tft.fillTriangle(x_start, y_start+60, x_start+15, y_start+80, x_start+30, y_start+60, ILI9341_WHITE);  //x0, y0, x1, y1, x2, y2, color
 }
 
 // Prints the Day of Week and current time
