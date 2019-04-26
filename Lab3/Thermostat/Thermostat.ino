@@ -38,8 +38,10 @@ bool hold_on = false;
 bool am_selected = false;
 int current_day = 0;
 int previous_day = current_day;
-int current_hour = 12;
+int current_hour = 6;
+int previous_hour = current_hour;
 int current_minute = 5;
+int previous_minute = current_minute;
 
 
 void setup() {
@@ -129,9 +131,9 @@ void loop() {
           if (p.x >= BOXSIZE * 17 && p.x <= BOXSIZE * 19 && p.y >= BOXSIZE * 2.5 && p.y <= BOXSIZE * 5.5) {
             if (!(set_temp < 41)) {
               prev_set_temp = set_temp;
-               set_temp--;
-               printSetTemp();
-               break;
+              set_temp--;
+              printSetTemp();
+              break;
             }
           }
           
@@ -175,7 +177,7 @@ void loop() {
           break;
         }
 
-        // down arrow
+        // day down arrow
         if(p.x >= BOXSIZE * 14 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 23 && p.y <= BOXSIZE * 26) {
           previous_day = current_day;
           if(current_day >= 1) {
@@ -188,8 +190,62 @@ void loop() {
           updateText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[previous_day]), String(dayNames[current_day]));
           break; 
         }
+
+        // hour up arrow
+        if(p.x >= BOXSIZE * 6 && p.x <= BOXSIZE * 8 && p.y >= BOXSIZE * 13 && p.y <= BOXSIZE * 16) {
+          if(!(current_hour > 11)) {
+            previous_hour = current_hour;
+            current_hour++;
+            float ref_x;
+            if(current_hour > 9 && previous_hour != 9) {
+              ref_x = 15;
+            }
+            // special case when going from 9 to 10
+            else if(current_hour > 9 && previous_hour == 9){
+                updateText(BOXSIZE * 16.5, BOXSIZE * 11.5, BOXSIZE * 15, 2, String(previous_hour), String(current_hour));
+                break;
+            }
+            else {
+              ref_x = 16.5;
+            }
+            updateText(BOXSIZE * ref_x, BOXSIZE * 11.5, 2, String(previous_hour), String(current_hour));
+          }
+          break;
+        }
+
+        // hour down arrow
+        if(p.x >= BOXSIZE * 14 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 13 && p.y <= BOXSIZE * 16) {
+          if (current_hour > 1) {
+            previous_hour = current_hour;
+            current_hour--;
+            
+            float ref_x;
+            if(current_hour < 10 && previous_hour != 10) {
+              ref_x = 16.5;
+            }
+            // special case when going from 10 to 9
+            else if(current_hour < 10 && previous_hour == 10) {
+              updateText(BOXSIZE * 15, BOXSIZE * 11.5, BOXSIZE * 16.5, 2, String(previous_hour), String(current_hour));
+              break;
+            }
+            else {
+              ref_x = 15;
+            }
+            updateText(BOXSIZE * ref_x, BOXSIZE * 11.5, 2, String(previous_hour), String(current_hour));
+          }
+          break;
+        }
+
+        // minute up arrow
+        if(p.x >= BOXSIZE * 6 && p.x <= BOXSIZE * 8 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 10) {
+          break;
+        }
+
+        // minute down arrow
+        if(p.x >= BOXSIZE * 14 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 10) {
+          break;
+        }
       }
-      
     }
     currently_touched = true;
   }
@@ -236,13 +292,13 @@ void drawTimeSettingPage() {
   printText(BOXSIZE * 18.5, BOXSIZE * 2.5, 1, "Time", ILI9341_WHITE);
 
   // toggling arrows
-  drawArrows(BOXSIZE * 5, BOXSIZE * 7.5);
-  drawArrows(BOXSIZE * 16, BOXSIZE * 7.5);
-  drawArrows(BOXSIZE * 22, BOXSIZE * 7.5);
+  drawArrows(BOXSIZE * 5, BOXSIZE * 7.5);   // day
+  drawArrows(BOXSIZE * 16, BOXSIZE * 7.5);  // hour
+  drawArrows(BOXSIZE * 22, BOXSIZE * 7.5);  // minute
 
   // day
-  updateText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[previous_day]), String(dayNames[current_day]));
-  //printText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[current_day]), ILI9341_WHITE);
+  //updateText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[previous_day]), String(dayNames[current_day]));
+  printText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[current_day]), ILI9341_WHITE);
 
   // hour
   if(current_hour > 9) {
@@ -316,12 +372,22 @@ void printText(int x_start, int y_start, int text_size, String text, uint16_t co
   tft.print(text);
 }
 
+// writes over current text in the background color, then writes again in original color
 void updateText(int x_start, int y_start, int text_size, String prev_text, String new_text) {
   // "clear" what is there now
   printText(x_start, y_start, text_size, prev_text, ILI9341_BLACK);
 
   // set new text
   printText(x_start, y_start, text_size, new_text, ILI9341_WHITE);
+}
+
+// specifically for text where the prev_text & new_text are at different start coords (e.g. 9, 10)
+void updateText(int prev_x_start, int y_start, int new_x_start, int text_size, String prev_text, String new_text) {
+  // "clear" what is there now
+  printText(prev_x_start, y_start, text_size, prev_text, ILI9341_BLACK);
+
+  // set new text
+  printText(new_x_start, y_start, text_size, new_text, ILI9341_WHITE);
 }
 
 // TODO: updateText for bold fonts
