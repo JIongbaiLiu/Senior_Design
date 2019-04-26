@@ -193,7 +193,7 @@ void loop() {
 
         // hour up arrow
         if(p.x >= BOXSIZE * 6 && p.x <= BOXSIZE * 8 && p.y >= BOXSIZE * 13 && p.y <= BOXSIZE * 16) {
-          if(!(current_hour > 11)) {
+          if(current_hour < 12) {
             previous_hour = current_hour;
             current_hour++;
             float ref_x;
@@ -238,6 +238,20 @@ void loop() {
 
         // minute up arrow
         if(p.x >= BOXSIZE * 6 && p.x <= BOXSIZE * 8 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 10) {
+          if(current_minute < 59){
+            previous_minute = current_minute;
+            current_minute++;
+            
+            if(current_minute > 9 && previous_minute != 9) {
+              updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(previous_minute), String(current_minute));
+            }
+            else if(current_minute > 9 && previous_minute == 9){
+              updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(previous_minute), String(current_minute));
+            }
+            else {
+              updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(previous_minute), String ("0") + String(current_minute));
+            }
+          }
           break;
         }
 
@@ -297,7 +311,6 @@ void drawTimeSettingPage() {
   drawArrows(BOXSIZE * 22, BOXSIZE * 7.5);  // minute
 
   // day
-  //updateText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[previous_day]), String(dayNames[current_day]));
   printText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[current_day]), ILI9341_WHITE);
 
   // hour
