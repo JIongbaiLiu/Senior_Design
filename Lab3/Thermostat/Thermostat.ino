@@ -14,6 +14,7 @@
 #define HOME_PAGE 0
 #define SETTINGS_PAGE 1
 #define TIME_SETTINGS_PAGE 2
+#define SET_POINTS_PAGE 3
 
 // general vars
 int current_page = HOME_PAGE;
@@ -36,6 +37,7 @@ bool hold_on = false;
 // time setting page vars
 bool am_selected = false;
 int current_day = 0;
+int previous_day = current_day;
 int current_hour = 12;
 int current_minute = 5;
 
@@ -62,14 +64,16 @@ void setup() {
   tft.setRotation(rotation);
 
   //---------sandbox space-----------
-
+  drawTimeSettingPage();
+  current_page = TIME_SETTINGS_PAGE;
   //---------------------------------
 
-  drawHomeScreen();
+//  drawHomeScreen();
 }
 
 void loop() {
   //TODO: get real_temp
+  //TODO: get time from RTC (or EEPROM??)
   
   if(!ts.touched()){
     currently_touched = false;
@@ -132,17 +136,58 @@ void loop() {
           }
           
         case SETTINGS_PAGE:
-          // back button
-          if(p.x >= BOXSIZE * 0 && p.x <= BOXSIZE * 4 && p.y >= BOXSIZE * 22 && p.y <= BOXSIZE * 32) {
+          // Go Back
+          if(p.x >= BOXSIZE * 0 && p.x <= BOXSIZE * 5 && p.y >= BOXSIZE * 22 && p.y <= BOXSIZE * 32) {
             current_page = HOME_PAGE;
             clearScreen();
             drawHomeScreen();
             break;
           }
 
-          // TODO: time settings
+          // Day & Time
+          if(p.x >= BOXSIZE * 7 && p.x <= BOXSIZE * 12 && p.y >= BOXSIZE * 10 && p.y <= BOXSIZE * 25) {
+            current_page = TIME_SETTINGS_PAGE;
+            clearScreen();
+            drawTimeSettingPage();
+            break;
+          }
 
-          // TODO: set points settings
+          // Set Points
+          if(p.x >= BOXSIZE * 15 && p.x <= BOXSIZE * 20 && p.y >= BOXSIZE * 10 && p.y <= BOXSIZE * 25) {
+            current_page = SET_POINTS_PAGE;
+            clearScreen();
+            drawSetPointsPage();
+            break;
+          }
+          
+        case TIME_SETTINGS_PAGE:
+        // day up arrow
+        if(p.x >= BOXSIZE * 6 && p.x <= BOXSIZE * 8 && p.y >= BOXSIZE * 23 && p.y <= BOXSIZE * 26) {
+          previous_day = current_day;
+          if(current_day < 6) {
+            current_day++;
+          }
+          else {
+            current_day = 0;
+          }
+          // update day label
+          updateText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[previous_day]), String(dayNames[current_day]));
+          break;
+        }
+
+        // down arrow
+        if(p.x >= BOXSIZE * 14 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 23 && p.y <= BOXSIZE * 26) {
+          previous_day = current_day;
+          if(current_day >= 1) {
+            current_day--;
+          }
+          else {
+            current_day = 6;
+          }
+          // update day label
+          updateText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[previous_day]), String(dayNames[current_day]));
+          break; 
+        }
       }
       
     }
@@ -151,10 +196,14 @@ void loop() {
 }
 
 /**
- * Screen drawing methods. Some of these call other helper methods below
+ * These methods draw the five pages
+ *  - HOME_PAGE
+ *  - SETTINGS_PAGE
+ *  - TIME_SETTINGS_PAGE
+ *  - SET_POINTS_PAGE
  */
 
-// prints the main home screen 
+// TODO: could probably refactor to be more like settings page with more printText calls
 void drawHomeScreen() {
   drawCornerButton("Settings");
   printSetTemp();
@@ -192,7 +241,8 @@ void drawTimeSettingPage() {
   drawArrows(BOXSIZE * 22, BOXSIZE * 7.5);
 
   // day
-  printText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[current_day]), ILI9341_WHITE);
+  updateText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[previous_day]), String(dayNames[current_day]));
+  //printText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[current_day]), ILI9341_WHITE);
 
   // hour
   if(current_hour > 9) {
@@ -235,6 +285,11 @@ void drawTimeSettingPage() {
   printText(178, 213, 1, "Cancel", ILI9341_WHITE);
 }
 
+// TODO: this
+void drawSetPointsPage() {
+  printText(BOXSIZE * 7, BOXSIZE * 10, 1, "Under Construction!", ILI9341_WHITE);
+}
+
 /**
  * These helpers methods draw home screen items
  */
@@ -260,6 +315,17 @@ void printText(int x_start, int y_start, int text_size, String text, uint16_t co
   tft.setTextSize(text_size);
   tft.print(text);
 }
+
+void updateText(int x_start, int y_start, int text_size, String prev_text, String new_text) {
+  // "clear" what is there now
+  printText(x_start, y_start, text_size, prev_text, ILI9341_BLACK);
+
+  // set new text
+  printText(x_start, y_start, text_size, new_text, ILI9341_WHITE);
+}
+
+// TODO: updateText for bold fonts
+
 
 // modular corner button 
 void drawCornerButton(String label) {
@@ -346,19 +412,12 @@ void printDOWandTime(){
 
 // Prints the set temperature
 void printSetTemp() {
-  int start_x = 260;
-  int start_y = 130;
-  
-  // "clear" what is there now
-  printText(BOXSIZE * 26, BOXSIZE * 13, 2, String(prev_set_temp), ILI9341_BLACK);
-
-  // set new temp
-  printText(BOXSIZE * 26, BOXSIZE * 13, 2, String(set_temp), ILI9341_WHITE);
+  updateText(BOXSIZE * 26, BOXSIZE * 13, 2, String(prev_set_temp), String(set_temp));
 }
 
-void updateTimeHomePage() {
-  Clock = rtc.now();
-  String dateTime = String(dayNames[Clock.dayOfTheWeek()]) + String(", ") + String(Clock.hour())
-                    + String(":") + String(Clock.minute()) + String(am_pm[am_selected]);
-  printText(BOXSIZE * 20, BOXSIZE * 1.5, 1, dateTime, ILI9341_WHITE);
-}
+//void updateTimeHomePage() {
+//  Clock = rtc.now();
+//  String dateTime = String(dayNames[Clock.dayOfTheWeek()]) + String(", ") + String(Clock.hour())
+//                    + String(":") + String(Clock.minute()) + String(am_pm[am_selected]);
+//  printText(BOXSIZE * 20, BOXSIZE * 1.5, 1, dateTime, ILI9341_WHITE);
+//}
