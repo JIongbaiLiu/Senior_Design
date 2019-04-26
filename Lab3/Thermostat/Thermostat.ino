@@ -291,6 +291,21 @@ void loop() {
           tft.fillRect(270, 140, 27, 2, ILI9341_WHITE);  // pm line on
           break;
         }
+
+        // save
+        if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 19 && p.y <= BOXSIZE * 27.5) {
+          //TODO: transfer temp variable vals to real vals
+          current_page = SETTINGS_PAGE;
+          clearScreen();
+          drawSettingsScreen();
+        }
+
+        //cancel
+        if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 15.5) {
+          current_page = SETTINGS_PAGE;
+          clearScreen();
+          drawSettingsScreen();
+        }
       }
     }
     currently_touched = true;
