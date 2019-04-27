@@ -4,6 +4,7 @@
 #include <Fonts/FreeSans9pt7b.h>
 #include <Fonts/FreeSansBold9pt7b.h>
 #include <Adafruit_FT6206.h>
+#include "SetPoint.h"
 
 
 #define TFT_CS 10
@@ -13,12 +14,15 @@
 #define ARROW_WIDTH 30
 #define ARROW_HEIGHT 20
 #define ARROWS_OFFSET 60
+#define WEEKDAY 0
+#define WEEKEND 1
 
 // pages
 #define HOME_PAGE 0
 #define SETTINGS_PAGE 1
 #define TIME_SETTINGS_PAGE 2
 #define SET_POINTS_PAGE 3
+#define EDIT_SET_POINT_PAGE 4
 
 // general vars
 int current_page = HOME_PAGE;
@@ -47,8 +51,12 @@ int previous_minute = current_minute;
 
 //set point page vars
 int current_set_point = 3;
-int current_day_type = 1;
-const char* day_type[2] = {"Week", "Weekend"};
+int current_day_type = WEEKDAY;
+const char* day_type[2] = {"Weekday", "Weekend"};
+SetPoint weekday_set_points[4];
+SetPoint weekend_set_points[4];
+
+
 
 
 void setup() {
@@ -73,8 +81,11 @@ void setup() {
   tft.setRotation(rotation);
 
   //---------sandbox space-----------
-  drawSetPointsPage();
-  current_page = SET_POINTS_PAGE;
+  SetPoint sp = SetPoint();
+  sp.set_values(SetPoint::DayType::Weekend, 12, 25, 74, true);
+  weekday_set_points[current_set_point] = sp;
+  drawEditSetPointPage();
+  current_page = EDIT_SET_POINT_PAGE;
   //---------------------------------
 
 //  drawHomeScreen();
@@ -262,56 +273,65 @@ void loop() {
           break;
         }
 
-        // minute down arrow
-        if(p.x >= BOXSIZE * 14 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 10) {
-          if(current_minute > 0) {
-            previous_minute = current_minute;
-            current_minute--;
-            
-            if(current_minute > 9 && previous_minute != 10) {
-              updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(previous_minute), String(current_minute));
-            }
-            // special case going from 10 to 9
-            else if(current_minute == 9 && previous_minute == 10){
-              updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(previous_minute), String ("0") + String(current_minute));
-            }
-            else {
-              updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(previous_minute), String ("0") + String(current_minute));
-            }
-          }
-          break;
-        }
+         // minute down arrow
+         if(p.x >= BOXSIZE * 14 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 10) {
+           if(current_minute > 0) {
+             previous_minute = current_minute;
+             current_minute--;
+             
+             if(current_minute > 9 && previous_minute != 10) {
+               updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(previous_minute), String(current_minute));
+             }
+             // special case going from 10 to 9
+             else if(current_minute == 9 && previous_minute == 10){
+               updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(previous_minute), String ("0") + String(current_minute));
+             }
+             else {
+               updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(previous_minute), String ("0") + String(current_minute));
+             }
+           }
+           break;
+         }
 
-        // am
-        if(p.x >= BOXSIZE * 7.5 && p.x <= BOXSIZE * 9.5 && p.y >= BOXSIZE * 1.5 && p.y <= BOXSIZE * 5.5) {
-          am_selected = true;
-          tft.fillRect(270, 90, 27, 2, ILI9341_WHITE);   // am line on
-          tft.fillRect(270, 140, 27, 2, ILI9341_BLACK);  // pm line off
-          break;
-        }
+         // am
+         if(p.x >= BOXSIZE * 7.5 && p.x <= BOXSIZE * 9.5 && p.y >= BOXSIZE * 1.5 && p.y <= BOXSIZE * 5.5) {
+           am_selected = true;
+           tft.fillRect(270, 90, 27, 2, ILI9341_WHITE);   // am line on
+           tft.fillRect(270, 140, 27, 2, ILI9341_BLACK);  // pm line off
+           break;
+         }
 
-        // pm
-        if(p.x >= BOXSIZE * 12.5 && p.x <= BOXSIZE * 14.5 && p.y >= BOXSIZE * 1.5 && p.y <= BOXSIZE * 5.5) {
-          am_selected = false;
-          tft.fillRect(270, 90, 27, 2, ILI9341_BLACK);   // am line off
-          tft.fillRect(270, 140, 27, 2, ILI9341_WHITE);  // pm line on
-          break;
-        }
+         // pm
+         if(p.x >= BOXSIZE * 12.5 && p.x <= BOXSIZE * 14.5 && p.y >= BOXSIZE * 1.5 && p.y <= BOXSIZE * 5.5) {
+           am_selected = false;
+           tft.fillRect(270, 90, 27, 2, ILI9341_BLACK);   // am line off
+           tft.fillRect(270, 140, 27, 2, ILI9341_WHITE);  // pm line on
+           break;
+         }
 
-        // save
-        if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 19 && p.y <= BOXSIZE * 27.5) {
-          //TODO: transfer temp variable vals to real vals
-          current_page = SETTINGS_PAGE;
-          clearScreen();
-          drawSettingsScreen();
-        }
+         // save
+         if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 19 && p.y <= BOXSIZE * 27.5) {
+           //TODO: transfer temp variable vals to real vals
+           current_page = SETTINGS_PAGE;
+           clearScreen();
+           drawSettingsScreen();
+         }
 
-        //cancel
-        if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 15.5) {
-          current_page = SETTINGS_PAGE;
-          clearScreen();
-          drawSettingsScreen();
-        }
+         //cancel
+         if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 15.5) {
+           current_page = SETTINGS_PAGE;
+           clearScreen();
+           drawSettingsScreen();
+         }
+         
+        case EDIT_SET_POINT_PAGE:
+         // save
+         if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 19 && p.y <= BOXSIZE * 27.5) {
+//           SetPoint sp = SetPoint();
+//           if(current_day_type = WEEKDAY) { sp.set_values(SetPoint::DayType::Weekday, 12, 25, 72); }
+//           else { sp.set_values(SetPoint::DayType::Weekend, 12, 25, 72); }
+//           weekday_set_points[current_set_point] = sp;
+         }
       }
     }
     currently_touched = true;
@@ -413,13 +433,13 @@ void drawSetPointsPage() {
 
   // week/weekend toggling
   drawArrows(BOXSIZE * 3.5, BOXSIZE * 10, 30, 20, 60, ILI9341_WHITE);
-  //day_type[current_day_type]
   printText(BOXSIZE * 2, BOXSIZE * 13.5, 1, day_type[current_day_type], ILI9341_WHITE);
 
-  // TODO: draw this box based on  current selected set point's data
+  // set point box
   tft.drawRect(BOXSIZE * 13, BOXSIZE * 9, BOXSIZE * 17, BOXSIZE * 7, ILI9341_WHITE);
 
-  printText(BOXSIZE * 14, BOXSIZE * 11, 1, "11:00AM-12:00PM", ILI9341_WHITE);
+  // TODO: varialbe text
+  printText(BOXSIZE * 18, BOXSIZE * 11, 1, "11:00AM", ILI9341_WHITE);
   printText(BOXSIZE * 19.5, BOXSIZE * 14.7, 2, "72", ILI9341_WHITE);
 
   // set point number
@@ -437,12 +457,65 @@ void drawSetPointsPage() {
   }
   else {
     drawArrows(BOXSIZE * 20, BOXSIZE * 7, ARROW_WIDTH, ARROW_HEIGHT, BOXSIZE * 11, ILI9341_WHITE);
-//    // up
-//    drawArrow(BOXSIZE * 20, BOXSIZE * 7, 30, -20, ILI9341_WHITE);
-//
-//    // down
-//    drawArrow(BOXSIZE * 20, BOXSIZE * 18, 30, 20, ILI9341_WHITE);
   }
+}
+
+void drawEditSetPointPage() {
+  SetPoint sp;
+  sp = weekday_set_points[current_set_point];
+//  if(current_day_type = WEEKDAY) {
+//    sp = weekday_set_points[current_set_point];
+//  }
+  //title
+  printText(BOXSIZE * 7, BOXSIZE *  2.5, 1, sp.get_dayType_asString() + " Set Point " + String(current_set_point), ILI9341_WHITE);
+  
+  // toggling arrows
+  drawArrows(BOXSIZE * 5, BOXSIZE * 7.5, ARROW_WIDTH, ARROW_HEIGHT, ARROWS_OFFSET, ILI9341_WHITE);   // temp
+  drawArrows(BOXSIZE * 16, BOXSIZE * 7.5, ARROW_WIDTH, ARROW_HEIGHT, ARROWS_OFFSET, ILI9341_WHITE);  // hour
+  drawArrows(BOXSIZE * 22, BOXSIZE * 7.5, ARROW_WIDTH, ARROW_HEIGHT, ARROWS_OFFSET, ILI9341_WHITE);  // minute
+
+  // temp
+  printText(BOXSIZE * 4.5, BOXSIZE * 11.5, 2, String(sp.get_temp()), ILI9341_WHITE);
+
+  // hour
+  if(sp.get_hour() > 9) {
+    printText(BOXSIZE * 15, BOXSIZE * 11.5, 2, String(sp.get_hour()), ILI9341_WHITE);
+  }
+  else {
+    printText(BOXSIZE * 16.5, BOXSIZE * 11.5, 2, String(sp.get_hour()), ILI9341_WHITE);
+  }
+  
+  // minute
+  if(sp.get_min() > 9) {
+    printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(sp.get_min()), ILI9341_WHITE);
+  }
+  else {
+    printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(sp.get_min()), ILI9341_WHITE);
+  }
+
+  // time colon
+  tft.fillRect(203, 95, 4, 4, ILI9341_WHITE);
+  tft.fillRect(203, 110, 4, 4, ILI9341_WHITE);
+
+  // am vs pm
+  printText(BOXSIZE * 27, BOXSIZE * 8.5, 1, "AM", ILI9341_WHITE);
+  printText(BOXSIZE * 27, BOXSIZE * 13.5, 1, "PM", ILI9341_WHITE);
+
+  // selected line
+  if (sp.is_am_on()) {
+    tft.fillRect(270, 90, 27, 2, ILI9341_WHITE);
+  }
+  else {
+    tft.fillRect(270, 140, 27, 2, ILI9341_WHITE);
+  }
+
+  // save button
+  tft.drawRect(45, 190, 85, 35, ILI9341_WHITE);
+  printText(68, 213, 1, "Save", ILI9341_WHITE);
+  
+  // cancel button
+  tft.drawRect(165, 190, 85, 35, ILI9341_WHITE);
+  printText(178, 213, 1, "Cancel", ILI9341_WHITE);
 }
 
 /**
@@ -594,3 +667,30 @@ void printSetTemp() {
 //                    + String(":") + String(Clock.minute()) + String(am_pm[am_selected]);
 //  printText(BOXSIZE * 20, BOXSIZE * 1.5, 1, dateTime, ILI9341_WHITE);
 //}
+
+//class SetPoint {
+//  public:
+//    enum DayType {Weekday, Weekend};
+//    SetPoint(int, int, int);
+//    void set_values(DayType dt, int hr, int mn, int t) {
+//      day_type = dt;
+//      h = hr;
+//      m = mn;
+//      temp = t; 
+//      is_set = true;
+//    }
+//    DayType get_dayType() { return day_type; }
+//    int get_hour() { return h; }
+//    int get_min()  { return m; }
+//    int get_temp() { return temp; }
+//    void clear_data() {
+//      is_set = false;
+//    }
+//
+//  private:
+//    DayType day_type;
+//    int h;
+//    int m;
+//    int temp;
+//    bool is_set;
+//};
