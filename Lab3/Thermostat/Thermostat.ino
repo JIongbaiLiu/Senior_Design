@@ -4,7 +4,7 @@
 #include <Fonts/FreeSans9pt7b.h>
 #include <Fonts/FreeSansBold9pt7b.h>
 #include <Adafruit_FT6206.h>
-#include "SetPoint.h"
+//#include "SetPoint.h"
 
 
 #define TFT_CS 10
@@ -16,6 +16,11 @@
 #define ARROWS_OFFSET 60
 #define WEEKDAY 0
 #define WEEKEND 1
+//do i need these?
+#define COOL_MODE 0
+#define HEAT_MODE 1
+#define ATUO_MODE 2
+
 
 // pages
 #define HOME_PAGE 0
@@ -23,6 +28,34 @@
 #define TIME_SETTINGS_PAGE 2
 #define SET_POINTS_PAGE 3
 #define EDIT_SET_POINT_PAGE 4
+
+
+// TODO: DOCUMENT THIS
+class SetPoint {
+  public:
+    void set_values(String dt, int hr, int mn, int t, bool am) {
+      day_type = dt;
+      h = hr;
+      m = mn;
+      temp = t; 
+      am_on = am;
+      is_set = true;
+    }
+    String get_day_type() { return day_type; }
+    int get_hour() { return h; }
+    int get_min()  { return m; }
+    int get_temp() { return temp; }
+    void clear_data() { is_set = false; }
+    bool is_am_on() { return am_on; }
+
+  private:
+    String day_type;
+    int h;
+    int m;
+    bool am_on;
+    int temp;
+    bool is_set;
+};
 
 // general vars
 int current_page = HOME_PAGE;
@@ -39,6 +72,11 @@ int prev_set_temp = set_temp;
 bool currently_touched = false;
 bool auto_on = false;
 bool hold_on = false;
+int mode = 0;
+const char* modes[2] = {"Cool Mode", "Heat Mode"};
+int temp_pin = 3;
+double tempF;
+int reading;
 
 // time setting page vars
 bool am_selected = false;
@@ -55,7 +93,6 @@ int current_day_type = WEEKDAY;
 const char* day_type[2] = {"Weekday", "Weekend"};
 SetPoint weekday_set_points[4];
 SetPoint weekend_set_points[4];
-
 
 
 
@@ -81,11 +118,15 @@ void setup() {
   tft.setRotation(rotation);
 
   //---------sandbox space-----------
-  SetPoint sp = SetPoint();
-  sp.set_values(SetPoint::DayType::Weekend, 12, 25, 74, true);
-  weekday_set_points[current_set_point] = sp;
-  drawEditSetPointPage();
-  current_page = EDIT_SET_POINT_PAGE;
+//  current_page = SET_POINTS_PAGE;
+//  SetPoint sp = SetPoint();
+//  sp.set_values("Weekday", 10, 35, 34, true);
+//  weekday_set_points[current_set_point--] = sp;
+//
+//  sp.set_values("Weekday", 11, 35, 34, true);
+//  weekday_set_points[current_set_point] = sp;
+  drawSetPointsPage();
+    //printText(BOXSIZE * 4.5, BOXSIZE * 11.5, 2, String(tempF), ILI9341_WHITE);
   //---------------------------------
 
 //  drawHomeScreen();
@@ -323,6 +364,78 @@ void loop() {
            clearScreen();
            drawSettingsScreen();
          }
+
+        case SET_POINTS_PAGE:
+        // Go Back
+          if(p.x >= BOXSIZE * 0 && p.x <= BOXSIZE * 5 && p.y >= BOXSIZE * 22 && p.y <= BOXSIZE * 32) {
+            current_page = SETTINGS_PAGE;
+            clearScreen();
+            drawSettingsScreen();
+            break;
+          }
+          
+        // up arrow day type
+          if(p.x >= BOXSIZE * 8.5 && p.x <= BOXSIZE * 10.5 && p.y >= BOXSIZE * 25 && p.y <= BOXSIZE * 28) {
+            int previous_day_type;
+            if (current_day_type == WEEKDAY) {
+              previous_day_type = current_day_type;
+              current_day_type = WEEKEND;
+              }
+            else {
+              previous_day_type = current_day_type;
+              current_day_type = WEEKDAY;
+            }
+            updateText(BOXSIZE * 2, BOXSIZE * 13.5, 1, day_type[previous_day_type], day_type[current_day_type]);
+          }
+          
+        // down arrow day type
+        if(p.x >= BOXSIZE * 17.5 && p.x <= BOXSIZE * 19.5 && p.y >= BOXSIZE * 25 && p.y <= BOXSIZE * 28) {
+            int previous_day_type;
+            if (current_day_type == WEEKDAY) {
+              previous_day_type = current_day_type;
+              current_day_type = WEEKEND;
+              }
+            else {
+              previous_day_type = current_day_type;
+              current_day_type = WEEKDAY;
+            }
+            updateText(BOXSIZE * 2, BOXSIZE * 13.5, 1, day_type[previous_day_type], day_type[current_day_type]);
+          }
+          
+        // set point box
+        if(p.x >= BOXSIZE * 9 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 2 && p.y <= BOXSIZE * 16 ) {
+          current_page = EDIT_SET_POINT_PAGE;
+          clearScreen();
+          drawEditSetPointPage();
+        }
+        
+        // up arrow set points
+        if(p.x >= BOXSIZE * 5 && p.x <= BOXSIZE * 7 && p.y >= BOXSIZE * 9 && p.y <= BOXSIZE * 12) {
+          if(current_set_point > 1) {
+            int previous_day_type;
+            if (current_day_type == WEEKDAY) {
+              previous_day_type = current_day_type;
+              current_day_type = WEEKEND;
+              }
+            else {
+              previous_day_type = current_day_type;
+              current_day_type = WEEKDAY;
+            }
+            updateText(BOXSIZE * 2, BOXSIZE * 13.5, 1, day_type[previous_day_type], day_type[current_day_type]);
+          }
+        }
+        // down arrow set points
+        if(p.x >= BOXSIZE * 20 && p.x <= BOXSIZE * 22 && p.y >= BOXSIZE * 9 && p.y <= BOXSIZE * 12) {
+          //TODO: this doesn't correctly hide the arrows
+          int prev;
+          if(current_set_point < 4) {
+            prev = current_set_point;
+            current_set_point++;
+            drawSetPointData();
+          }
+        }
+        break;
+        
          
         case EDIT_SET_POINT_PAGE:
          // save
@@ -332,6 +445,7 @@ void loop() {
 //           else { sp.set_values(SetPoint::DayType::Weekend, 12, 25, 72); }
 //           weekday_set_points[current_set_point] = sp;
          }
+         break;
       }
     }
     currently_touched = true;
@@ -348,6 +462,9 @@ void loop() {
 
 // TODO: could probably refactor to be more like settings page with more printText calls
 void drawHomeScreen() {
+  // TODO: do i need this?
+//  printText(BOXSIZE * 22, BOXSIZE * 11, 1, "Set", ILI9341_WHITE);
+//  printText(BOXSIZE * 22.5, BOXSIZE * 13, 1, "to", ILI9341_WHITE);
   drawCornerButton("Settings");
   printSetTemp();
   drawArrows(BOXSIZE * 26.5, BOXSIZE * 9, ARROW_WIDTH, ARROW_HEIGHT, ARROWS_OFFSET, ILI9341_WHITE);
@@ -434,13 +551,28 @@ void drawSetPointsPage() {
   // week/weekend toggling
   drawArrows(BOXSIZE * 3.5, BOXSIZE * 10, 30, 20, 60, ILI9341_WHITE);
   printText(BOXSIZE * 2, BOXSIZE * 13.5, 1, day_type[current_day_type], ILI9341_WHITE);
+  drawSetPointData();
+}
+
+void drawSetPointData() {
+  // get correct SetPoint object
+  SetPoint sp;
+  // TODO: case for not set
+  if(current_day_type == WEEKDAY) { sp = weekday_set_points[current_set_point]; }
+  else { sp = weekend_set_points[current_set_point]; }
 
   // set point box
   tft.drawRect(BOXSIZE * 13, BOXSIZE * 9, BOXSIZE * 17, BOXSIZE * 7, ILI9341_WHITE);
 
-  // TODO: varialbe text
-  printText(BOXSIZE * 18, BOXSIZE * 11, 1, "11:00AM", ILI9341_WHITE);
-  printText(BOXSIZE * 19.5, BOXSIZE * 14.7, 2, "72", ILI9341_WHITE);
+  String set_time = String(sp.get_hour()) + ":" + String(sp.get_min());
+  if(sp.is_am_on()) { set_time = set_time + "AM"; }
+  else { set_time = set_time + "PM"; }
+
+  // time
+  printText(BOXSIZE * 18, BOXSIZE * 11, 1, set_time, ILI9341_WHITE);
+
+  // temp
+  printText(BOXSIZE * 19.5, BOXSIZE * 14.7, 2, String(sp.get_temp()), ILI9341_WHITE);
 
   // set point number
   tft.drawRect(BOXSIZE * 13, BOXSIZE * 13.7, 20, 23, ILI9341_WHITE);
@@ -467,7 +599,8 @@ void drawEditSetPointPage() {
 //    sp = weekday_set_points[current_set_point];
 //  }
   //title
-  printText(BOXSIZE * 7, BOXSIZE *  2.5, 1, sp.get_dayType_asString() + " Set Point " + String(current_set_point), ILI9341_WHITE);
+  //TODO: check this sp.get_day_type()
+  printText(BOXSIZE * 7, BOXSIZE *  2.5, 1, sp.get_day_type() + " Set Point " + String(current_set_point), ILI9341_WHITE);
   
   // toggling arrows
   drawArrows(BOXSIZE * 5, BOXSIZE * 7.5, ARROW_WIDTH, ARROW_HEIGHT, ARROWS_OFFSET, ILI9341_WHITE);   // temp
@@ -595,7 +728,7 @@ void drawBottomBar() {
   tft.drawLine(0, 200, 320, 200, ILI9341_WHITE);
 
   // Cool/Heat status
-  printText(BOXSIZE, BOXSIZE * 22.5, 1, "Cool Mode", ILI9341_WHITE);
+  printText(BOXSIZE, BOXSIZE * 22.5, 1, modes[mode], ILI9341_WHITE);
 
   // Auto status
   String label;
@@ -661,36 +794,14 @@ void printSetTemp() {
   updateText(BOXSIZE * 26, BOXSIZE * 13, 2, String(prev_set_temp), String(set_temp));
 }
 
+void getTemp() {
+  reading = analogRead(temp_pin);
+  tempF = (reading / 9.31 * 1.8 + 32);
+}
+
 //void updateTimeHomePage() {
 //  Clock = rtc.now();
 //  String dateTime = String(dayNames[Clock.dayOfTheWeek()]) + String(", ") + String(Clock.hour())
 //                    + String(":") + String(Clock.minute()) + String(am_pm[am_selected]);
 //  printText(BOXSIZE * 20, BOXSIZE * 1.5, 1, dateTime, ILI9341_WHITE);
 //}
-
-//class SetPoint {
-//  public:
-//    enum DayType {Weekday, Weekend};
-//    SetPoint(int, int, int);
-//    void set_values(DayType dt, int hr, int mn, int t) {
-//      day_type = dt;
-//      h = hr;
-//      m = mn;
-//      temp = t; 
-//      is_set = true;
-//    }
-//    DayType get_dayType() { return day_type; }
-//    int get_hour() { return h; }
-//    int get_min()  { return m; }
-//    int get_temp() { return temp; }
-//    void clear_data() {
-//      is_set = false;
-//    }
-//
-//  private:
-//    DayType day_type;
-//    int h;
-//    int m;
-//    int temp;
-//    bool is_set;
-//};
