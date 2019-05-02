@@ -4,7 +4,7 @@
 #include <Fonts/FreeSans9pt7b.h>
 #include <Fonts/FreeSansBold9pt7b.h>
 #include <Adafruit_FT6206.h>
-//#include "SetPoint.h"
+#include "RTClib.h"
 
 
 #define TFT_CS 10
@@ -30,31 +30,37 @@
 #define EDIT_SET_POINT_PAGE 4
 
 
-// TODO: DOCUMENT THIS
+/**
+ * Class Name: Set Point
+ * Description: Holds the set point data
+ * 
+ * Note: The "constructor" is set_values. My c++ is a little rough
+ */
 class SetPoint {
   public:
-    void set_values(String dt, int hr, int mn, int t, bool am) {
-      day_type = dt;
-      h = hr;
-      m = mn;
-      temp = t; 
-      am_on = am;
-      is_set = true;
+    void set_values(String day_type_, int h_, int m_, int t_, String period_) {
+      day_type = day_type_;
+      h = h_;
+      m = m_;
+      temp = t_; 
+      period = period_;
+      set = true;
     }
     String get_day_type() { return day_type; }
     int get_hour() { return h; }
     int get_min()  { return m; }
     int get_temp() { return temp; }
-    void clear_data() { is_set = false; }
-    bool is_am_on() { return am_on; }
+    void clear_data() { set = false; }
+    String get_period() { return period; }
+    bool is_set() { return set; }
 
   private:
     String day_type;
     int h;
     int m;
-    bool am_on;
+    String period;
     int temp;
-    bool is_set;
+    bool set;
 };
 
 // general vars
@@ -63,6 +69,8 @@ const char* dayNames[7] = {"Sun", "Mon", "Tues", "Wed", "Thu", "Fri", "Sat"};
 const char* am_pm[2] = {"AM", "PM"};
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
 Adafruit_FT6206 ts = Adafruit_FT6206();
+RTC_DS1307 rtc;
+DateTime Clock;
 
 // home page vars
 int real_temp = 75;
@@ -95,7 +103,6 @@ SetPoint weekday_set_points[4];
 SetPoint weekend_set_points[4];
 
 
-
 void setup() {
   
   while (!Serial);
@@ -117,19 +124,37 @@ void setup() {
   uint8_t rotation = 3;
   tft.setRotation(rotation);
 
+  // rtc stuff
+    if (! rtc.isrunning()) 
+      {
+        Serial.println("RTC is NOT running!");
+        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+      }
+      // slated for deletion
+//      else
+//      {
+//       rtc.adjust(DateTime(2014, 1, 21, 3, 15, 0));
+//      }
+
   //---------sandbox space-----------
 //  current_page = SET_POINTS_PAGE;
-//  SetPoint sp = SetPoint();
-//  sp.set_values("Weekday", 10, 35, 34, true);
-//  weekday_set_points[current_set_point--] = sp;
-//
-//  sp.set_values("Weekday", 11, 35, 34, true);
-//  weekday_set_points[current_set_point] = sp;
-  drawSetPointsPage();
-    //printText(BOXSIZE * 4.5, BOXSIZE * 11.5, 2, String(tempF), ILI9341_WHITE);
-  //---------------------------------
+  SetPoint sp = SetPoint();
+  sp.set_values("Weekday", 10, 35, 34, "AM");
+  weekday_set_points[0] = sp;
 
-//  drawHomeScreen();
+  sp.set_values("Weekday", 11, 35, 34, "PM");
+  weekday_set_points[1] = sp;
+
+  sp.set_values("Weekday", 12, 00, 68, "PM");
+  weekday_set_points[2] = sp;
+
+  sp.set_values("Weekday", 5, 30, 74, "PM");
+  weekday_set_points[3] = sp;
+    
+//  drawSetPointsPage();
+  //---------------------------------
+  current_page = HOME_PAGE;
+  drawHomeScreen();
 }
 
 void loop() {
@@ -142,7 +167,7 @@ void loop() {
   }
 
   if(ts.touched()) {
-      if(!currently_touched) {
+    if(!currently_touched) {
       // Retrieve a point  
       TS_Point p = ts.getPoint();
 
@@ -158,42 +183,39 @@ void loop() {
             current_page = SETTINGS_PAGE;
             clearScreen();
             drawSettingsScreen();
-            break;
           }
 
           // auto button
-          if (p.x >= BOXSIZE * 20 && p.x <= BOXSIZE * 24 && p.y >= BOXSIZE * 10.5 && p.y <= BOXSIZE * 20.5) {
+          else if(p.x >= BOXSIZE * 20 && p.x <= BOXSIZE * 24 && p.y >= BOXSIZE * 10.5 && p.y <= BOXSIZE * 20.5) {
             auto_on = !auto_on;
             drawBottomBar();
-            break;
           }
 
           // hold button
-          if(p.x >= BOXSIZE * 20 && p.x <= BOXSIZE * 24 && p.y >= BOXSIZE * 0 && p.y <= BOXSIZE * 10) {
+          else if(p.x >= BOXSIZE * 20 && p.x <= BOXSIZE * 24 && p.y >= BOXSIZE * 0 && p.y <= BOXSIZE * 10) {
             hold_on = !hold_on;
             drawBottomBar();
-            break;
           }
 
           // up arrow
-          if (p.x >= BOXSIZE * 9 && p.x <= BOXSIZE * 11 && p.y >= BOXSIZE * 2.5 && p.y <= BOXSIZE * 5.5) {
+          else if (p.x >= BOXSIZE * 9 && p.x <= BOXSIZE * 11 && p.y >= BOXSIZE * 2.5 && p.y <= BOXSIZE * 5.5) {
             if (!(set_temp > 89)) {
               prev_set_temp = set_temp;
               set_temp++;
               printSetTemp();
-              break;
             }
           }
 
           // down arrow
-          if (p.x >= BOXSIZE * 17 && p.x <= BOXSIZE * 19 && p.y >= BOXSIZE * 2.5 && p.y <= BOXSIZE * 5.5) {
+          else if (p.x >= BOXSIZE * 17 && p.x <= BOXSIZE * 19 && p.y >= BOXSIZE * 2.5 && p.y <= BOXSIZE * 5.5) {
             if (!(set_temp < 41)) {
               prev_set_temp = set_temp;
               set_temp--;
               printSetTemp();
-              break;
             }
           }
+          break;
+          
           
         case SETTINGS_PAGE:
           // Go Back
@@ -201,181 +223,179 @@ void loop() {
             current_page = HOME_PAGE;
             clearScreen();
             drawHomeScreen();
-            break;
           }
 
           // Day & Time
-          if(p.x >= BOXSIZE * 7 && p.x <= BOXSIZE * 12 && p.y >= BOXSIZE * 10 && p.y <= BOXSIZE * 25) {
+          else if(p.x >= BOXSIZE * 7 && p.x <= BOXSIZE * 12 && p.y >= BOXSIZE * 10 && p.y <= BOXSIZE * 25) {
             current_page = TIME_SETTINGS_PAGE;
             clearScreen();
             drawTimeSettingPage();
-            break;
           }
 
           // Set Points
-          if(p.x >= BOXSIZE * 15 && p.x <= BOXSIZE * 20 && p.y >= BOXSIZE * 10 && p.y <= BOXSIZE * 25) {
+          else if(p.x >= BOXSIZE * 15 && p.x <= BOXSIZE * 20 && p.y >= BOXSIZE * 10 && p.y <= BOXSIZE * 25) {
             current_page = SET_POINTS_PAGE;
             clearScreen();
             drawSetPointsPage();
-            break;
           }
+          break;
+          
           
         case TIME_SETTINGS_PAGE:
-        // day up arrow
-        if(p.x >= BOXSIZE * 6 && p.x <= BOXSIZE * 8 && p.y >= BOXSIZE * 23 && p.y <= BOXSIZE * 26) {
-          previous_day = current_day;
-          if(current_day < 6) {
-            current_day++;
-          }
-          else {
-            current_day = 0;
-          }
-          // update day label
-          updateText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[previous_day]), String(dayNames[current_day]));
-          break;
-        }
-
-        // day down arrow
-        if(p.x >= BOXSIZE * 14 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 23 && p.y <= BOXSIZE * 26) {
-          previous_day = current_day;
-          if(current_day >= 1) {
-            current_day--;
-          }
-          else {
-            current_day = 6;
-          }
-          // update day label
-          updateText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[previous_day]), String(dayNames[current_day]));
-          break; 
-        }
-
-        // hour up arrow
-        if(p.x >= BOXSIZE * 6 && p.x <= BOXSIZE * 8 && p.y >= BOXSIZE * 13 && p.y <= BOXSIZE * 16) {
-          if(current_hour < 12) {
-            previous_hour = current_hour;
-            current_hour++;
-            float ref_x;
-            if(current_hour > 9 && previous_hour != 9) {
-              ref_x = 15;
+          // day up arrow
+          if(p.x >= BOXSIZE * 6 && p.x <= BOXSIZE * 8 && p.y >= BOXSIZE * 23 && p.y <= BOXSIZE * 26) {
+            previous_day = current_day;
+            if(current_day < 6) {
+              current_day++;
             }
-            // special case when going from 9 to 10
-            else if(current_hour > 9 && previous_hour == 9){
-                updateText(BOXSIZE * 16.5, BOXSIZE * 11.5, BOXSIZE * 15, 2, String(previous_hour), String(current_hour));
+            else {
+              current_day = 0;
+            }
+            // update day label
+            updateText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[previous_day]), String(dayNames[current_day]));
+          }
+
+          // day down arrow
+          else if(p.x >= BOXSIZE * 14 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 23 && p.y <= BOXSIZE * 26) {
+            previous_day = current_day;
+            if(current_day >= 1) {
+              current_day--;
+            }
+            else {
+              current_day = 6;
+            }
+            // update day label
+            updateText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[previous_day]), String(dayNames[current_day]));
+          }
+
+          // hour up arrow
+          else if(p.x >= BOXSIZE * 6 && p.x <= BOXSIZE * 8 && p.y >= BOXSIZE * 13 && p.y <= BOXSIZE * 16) {
+            if(current_hour < 12) {
+              previous_hour = current_hour;
+              current_hour++;
+              float ref_x;
+              if(current_hour > 9 && previous_hour != 9) {
+                ref_x = 15;
+              }
+              // special case when going from 9 to 10
+              else if(current_hour > 9 && previous_hour == 9){
+                  updateText(BOXSIZE * 16.5, BOXSIZE * 11.5, BOXSIZE * 15, 2, String(previous_hour), String(current_hour));
+                  break;
+              }
+              else {
+                ref_x = 16.5;
+              }
+              updateText(BOXSIZE * ref_x, BOXSIZE * 11.5, 2, String(previous_hour), String(current_hour));
+            }
+          }
+
+          // hour down arrow
+          else if(p.x >= BOXSIZE * 14 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 13 && p.y <= BOXSIZE * 16) {
+            if (current_hour > 1) {
+              previous_hour = current_hour;
+              current_hour--;
+            
+              float ref_x;
+              if(current_hour < 10 && previous_hour != 10) {
+                ref_x = 16.5;
+              }
+              // special case when going from 10 to 9
+              else if(current_hour < 10 && previous_hour == 10) {
+                updateText(BOXSIZE * 15, BOXSIZE * 11.5, BOXSIZE * 16.5, 2, String(previous_hour), String(current_hour));
                 break;
+              }
+              else {
+                ref_x = 15;
+              }
+              updateText(BOXSIZE * ref_x, BOXSIZE * 11.5, 2, String(previous_hour), String(current_hour));
             }
-            else {
-              ref_x = 16.5;
-            }
-            updateText(BOXSIZE * ref_x, BOXSIZE * 11.5, 2, String(previous_hour), String(current_hour));
-          }
-          break;
-        }
+          }  
 
-        // hour down arrow
-        if(p.x >= BOXSIZE * 14 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 13 && p.y <= BOXSIZE * 16) {
-          if (current_hour > 1) {
-            previous_hour = current_hour;
-            current_hour--;
+          // minute up arrow
+          else if(p.x >= BOXSIZE * 6 && p.x <= BOXSIZE * 8 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 10) {
+            if(current_minute < 59){
+              previous_minute = current_minute;
+              current_minute++;
             
-            float ref_x;
-            if(current_hour < 10 && previous_hour != 10) {
-              ref_x = 16.5;
-            }
-            // special case when going from 10 to 9
-            else if(current_hour < 10 && previous_hour == 10) {
-              updateText(BOXSIZE * 15, BOXSIZE * 11.5, BOXSIZE * 16.5, 2, String(previous_hour), String(current_hour));
-              break;
-            }
-            else {
-              ref_x = 15;
-            }
-            updateText(BOXSIZE * ref_x, BOXSIZE * 11.5, 2, String(previous_hour), String(current_hour));
-          }
-          break;
-        }
-
-        // minute up arrow
-        if(p.x >= BOXSIZE * 6 && p.x <= BOXSIZE * 8 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 10) {
-          if(current_minute < 59){
-            previous_minute = current_minute;
-            current_minute++;
-            
-            if(current_minute > 9 && previous_minute != 9) {
-              updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(previous_minute), String(current_minute));
-            }
-            // special case going from 9 to 10
-            else if(current_minute > 9 && previous_minute == 9){
-              updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(previous_minute), String(current_minute));
-            }
-            else {
-              updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(previous_minute), String ("0") + String(current_minute));
+              if(current_minute > 9 && previous_minute != 9) {
+                updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(previous_minute), String(current_minute));
+              }
+              // special case going from 9 to 10
+              else if(current_minute > 9 && previous_minute == 9){
+                updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(previous_minute), String(current_minute));
+              }
+              else {
+                updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(previous_minute), String ("0") + String(current_minute));
+              }
             }
           }
-          break;
-        }
 
-         // minute down arrow
-         if(p.x >= BOXSIZE * 14 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 10) {
-           if(current_minute > 0) {
-             previous_minute = current_minute;
-             current_minute--;
+           // minute down arrow
+           else if(p.x >= BOXSIZE * 14 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 10) {
+             if(current_minute > 0) {
+               previous_minute = current_minute;
+               current_minute--;
              
-             if(current_minute > 9 && previous_minute != 10) {
-               updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(previous_minute), String(current_minute));
-             }
-             // special case going from 10 to 9
-             else if(current_minute == 9 && previous_minute == 10){
-               updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(previous_minute), String ("0") + String(current_minute));
-             }
-             else {
-               updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(previous_minute), String ("0") + String(current_minute));
+               if(current_minute > 9 && previous_minute != 10) {
+                 updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(previous_minute), String(current_minute));
+               }
+               // special case going from 10 to 9
+               else if(current_minute == 9 && previous_minute == 10){
+                 updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(previous_minute), String ("0") + String(current_minute));
+               }
+               else {
+                 updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(previous_minute), String ("0") + String(current_minute));
+               }
              }
            }
+
+           // am
+           else if(p.x >= BOXSIZE * 7.5 && p.x <= BOXSIZE * 9.5 && p.y >= BOXSIZE * 1.5 && p.y <= BOXSIZE * 5.5) {
+             am_selected = true;
+             tft.fillRect(270, 90, 27, 2, ILI9341_WHITE);   // am line on
+             tft.fillRect(270, 140, 27, 2, ILI9341_BLACK);  // pm line off
+           }
+
+           // pm
+           else if(p.x >= BOXSIZE * 12.5 && p.x <= BOXSIZE * 14.5 && p.y >= BOXSIZE * 1.5 && p.y <= BOXSIZE * 5.5) {
+             am_selected = false;
+             tft.fillRect(270, 90, 27, 2, ILI9341_BLACK);   // am line off
+             tft.fillRect(270, 140, 27, 2, ILI9341_WHITE);  // pm line on
+           }
+
+           // save
+           // TODO: move down
+           else if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 19 && p.y <= BOXSIZE * 27.5) {
+             int hr = current_hour;
+             // set the RTC
+             if(!am_selected) {
+              hr += 12;
+             }
+             rtc.adjust(DateTime(2014, 1, 21, hr, current_minute, 0));
+             current_page = SETTINGS_PAGE;
+             clearScreen();
+             drawSettingsScreen();
+           }
+
+           //cancel
+           // TODO: move down
+           else if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 15.5) {
+             current_page = SETTINGS_PAGE;
+             clearScreen();
+             drawSettingsScreen();
+           }
            break;
-         }
-
-         // am
-         if(p.x >= BOXSIZE * 7.5 && p.x <= BOXSIZE * 9.5 && p.y >= BOXSIZE * 1.5 && p.y <= BOXSIZE * 5.5) {
-           am_selected = true;
-           tft.fillRect(270, 90, 27, 2, ILI9341_WHITE);   // am line on
-           tft.fillRect(270, 140, 27, 2, ILI9341_BLACK);  // pm line off
-           break;
-         }
-
-         // pm
-         if(p.x >= BOXSIZE * 12.5 && p.x <= BOXSIZE * 14.5 && p.y >= BOXSIZE * 1.5 && p.y <= BOXSIZE * 5.5) {
-           am_selected = false;
-           tft.fillRect(270, 90, 27, 2, ILI9341_BLACK);   // am line off
-           tft.fillRect(270, 140, 27, 2, ILI9341_WHITE);  // pm line on
-           break;
-         }
-
-         // save
-         if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 19 && p.y <= BOXSIZE * 27.5) {
-           //TODO: transfer temp variable vals to real vals
-           current_page = SETTINGS_PAGE;
-           clearScreen();
-           drawSettingsScreen();
-         }
-
-         //cancel
-         if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 15.5) {
-           current_page = SETTINGS_PAGE;
-           clearScreen();
-           drawSettingsScreen();
-         }
 
         case SET_POINTS_PAGE:
-        // Go Back
+          // Go Back
           if(p.x >= BOXSIZE * 0 && p.x <= BOXSIZE * 5 && p.y >= BOXSIZE * 22 && p.y <= BOXSIZE * 32) {
             current_page = SETTINGS_PAGE;
             clearScreen();
             drawSettingsScreen();
-            break;
           }
           
-        // up arrow day type
-          if(p.x >= BOXSIZE * 8.5 && p.x <= BOXSIZE * 10.5 && p.y >= BOXSIZE * 25 && p.y <= BOXSIZE * 28) {
+          // up arrow day type
+          else if(p.x >= BOXSIZE * 8.5 && p.x <= BOXSIZE * 10.5 && p.y >= BOXSIZE * 25 && p.y <= BOXSIZE * 28) {
             int previous_day_type;
             if (current_day_type == WEEKDAY) {
               previous_day_type = current_day_type;
@@ -388,69 +408,78 @@ void loop() {
             updateText(BOXSIZE * 2, BOXSIZE * 13.5, 1, day_type[previous_day_type], day_type[current_day_type]);
           }
           
-        // down arrow day type
-        if(p.x >= BOXSIZE * 17.5 && p.x <= BOXSIZE * 19.5 && p.y >= BOXSIZE * 25 && p.y <= BOXSIZE * 28) {
-            int previous_day_type;
-            if (current_day_type == WEEKDAY) {
-              previous_day_type = current_day_type;
-              current_day_type = WEEKEND;
-              }
-            else {
-              previous_day_type = current_day_type;
-              current_day_type = WEEKDAY;
+          // down arrow day type
+          else if(p.x >= BOXSIZE * 17.5 && p.x <= BOXSIZE * 19.5 && p.y >= BOXSIZE * 25 && p.y <= BOXSIZE * 28) {
+              int previous_day_type;
+              if (current_day_type == WEEKDAY) {
+                previous_day_type = current_day_type;
+                current_day_type = WEEKEND;
+                }
+              else {
+                previous_day_type = current_day_type;
+                current_day_type = WEEKDAY;
             }
             updateText(BOXSIZE * 2, BOXSIZE * 13.5, 1, day_type[previous_day_type], day_type[current_day_type]);
           }
           
-        // set point box
-        if(p.x >= BOXSIZE * 9 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 2 && p.y <= BOXSIZE * 16 ) {
-          current_page = EDIT_SET_POINT_PAGE;
-          clearScreen();
-          drawEditSetPointPage();
-        }
-        
-        // up arrow set points
-        if(p.x >= BOXSIZE * 5 && p.x <= BOXSIZE * 7 && p.y >= BOXSIZE * 9 && p.y <= BOXSIZE * 12) {
-          if(current_set_point > 1) {
-            int previous_day_type;
-            if (current_day_type == WEEKDAY) {
-              previous_day_type = current_day_type;
-              current_day_type = WEEKEND;
-              }
-            else {
-              previous_day_type = current_day_type;
-              current_day_type = WEEKDAY;
-            }
-            updateText(BOXSIZE * 2, BOXSIZE * 13.5, 1, day_type[previous_day_type], day_type[current_day_type]);
+          // set point 1
+          else if(p.x >= BOXSIZE * 5 && p.x <= BOXSIZE * 8.5 && p.y >= BOXSIZE * 2 && p.y <= BOXSIZE * 19) {
+            current_set_point = 0;
+            current_page = EDIT_SET_POINT_PAGE;
+            clearScreen();
+            drawEditSetPointPage();
           }
-        }
-        // down arrow set points
-        if(p.x >= BOXSIZE * 20 && p.x <= BOXSIZE * 22 && p.y >= BOXSIZE * 9 && p.y <= BOXSIZE * 12) {
-          //TODO: this doesn't correctly hide the arrows
-          int prev;
-          if(current_set_point < 4) {
-            prev = current_set_point;
-            current_set_point++;
-            drawSetPointData();
+
+          // set point 2
+          else if(p.x >= BOXSIZE * 10 && p.x <= BOXSIZE * 13.5 && p.y >= BOXSIZE * 2 && p.y <= BOXSIZE * 19) {
+            current_set_point = 1;
+            current_page = EDIT_SET_POINT_PAGE;
+            clearScreen();
+            drawEditSetPointPage();
           }
-        }
-        break;
+
+          // set point 3
+          else if(p.x >= BOXSIZE * 15 && p.x <= BOXSIZE * 18.5 && p.y >= BOXSIZE * 2 && p.y <= BOXSIZE * 19) {
+            current_set_point = 2;
+            current_page = EDIT_SET_POINT_PAGE;
+            clearScreen();
+            drawEditSetPointPage();
+          }
+
+          // set point 4
+          else if(p.x >= BOXSIZE * 20 && p.x <= BOXSIZE * 23.5 && p.y >= BOXSIZE * 2 && p.y <= BOXSIZE * 19) {
+            current_set_point = 3;
+            current_page = EDIT_SET_POINT_PAGE;
+            clearScreen();
+            drawEditSetPointPage();
+          }
+          break;
         
          
         case EDIT_SET_POINT_PAGE:
          // save
+         // TODO: move down
          if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 19 && p.y <= BOXSIZE * 27.5) {
-//           SetPoint sp = SetPoint();
-//           if(current_day_type = WEEKDAY) { sp.set_values(SetPoint::DayType::Weekday, 12, 25, 72); }
-//           else { sp.set_values(SetPoint::DayType::Weekend, 12, 25, 72); }
-//           weekday_set_points[current_set_point] = sp;
+           // save stuff probably
+           current_page = SET_POINTS_PAGE;
+           clearScreen();
+           drawSetPointsPage();
+         }
+
+         //cancel
+         // TODO: move down
+         if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 15.5) {
+           current_page = SET_POINTS_PAGE;
+           clearScreen();
+           drawSetPointsPage();
          }
          break;
-      }
-    }
-    currently_touched = true;
+     }
+   }
+  currently_touched = true;
   }
 }
+
 
 /**
  * These methods draw the five pages
@@ -458,8 +487,12 @@ void loop() {
  *  - SETTINGS_PAGE
  *  - TIME_SETTINGS_PAGE
  *  - SET_POINTS_PAGE
+ *  - EDIT_SET_POINT_PAGE
  */
 
+/**
+ * Draws Home page
+ */
 // TODO: could probably refactor to be more like settings page with more printText calls
 void drawHomeScreen() {
   // TODO: do i need this?
@@ -473,6 +506,9 @@ void drawHomeScreen() {
   drawBottomBar();
 }
 
+/**
+ * Draws Settings Screen
+ */
 void drawSettingsScreen() {
   drawCornerButton("Go Back");
 
@@ -488,7 +524,12 @@ void drawSettingsScreen() {
   printText(BOXSIZE * 9, BOXSIZE * 18, 1, "Set Points", ILI9341_WHITE);
 }
 
+/**
+ * Draws Time Settings Page
+ */
 void drawTimeSettingPage() {
+  Clock = rtc.now();
+  int hr = Clock.hour();
   // Day label
   printText(BOXSIZE * 5, BOXSIZE * 2, 1, "Day", ILI9341_WHITE);
 
@@ -504,19 +545,20 @@ void drawTimeSettingPage() {
   printText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[current_day]), ILI9341_WHITE);
 
   // hour
+  if(Clock.hour() > 12) { hr -= 12; }
   if(current_hour > 9) {
-    printText(BOXSIZE * 15, BOXSIZE * 11.5, 2, String(current_hour), ILI9341_WHITE);
+    printText(BOXSIZE * 15, BOXSIZE * 11.5, 2, String(hr), ILI9341_WHITE);
   }
   else {
-    printText(BOXSIZE * 16.5, BOXSIZE * 11.5, 2, String(current_hour), ILI9341_WHITE);
+    printText(BOXSIZE * 16.5, BOXSIZE * 11.5, 2, String(hr), ILI9341_WHITE);
   }
   
   // minute
   if(current_minute > 9) {
-    printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(current_minute), ILI9341_WHITE);
+    printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(Clock.minute()), ILI9341_WHITE);
   }
   else {
-    printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(current_minute), ILI9341_WHITE);
+    printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(Clock.minute()), ILI9341_WHITE);
   }
 
   // time colon
@@ -544,63 +586,73 @@ void drawTimeSettingPage() {
   printText(178, 213, 1, "Cancel", ILI9341_WHITE);
 }
 
+/**
+ * Draws Set Points Page
+ */
 void drawSetPointsPage() {
+  int offset = 5;
+  String set_point_text;
+  SetPoint sp[4];
+  
   drawCornerButton("Go Back");
   printText(BOXSIZE * 15, BOXSIZE *  2.5, 1, "Your Set Points", ILI9341_WHITE);  // title
 
   // week/weekend toggling
   drawArrows(BOXSIZE * 3.5, BOXSIZE * 10, 30, 20, 60, ILI9341_WHITE);
   printText(BOXSIZE * 2, BOXSIZE * 13.5, 1, day_type[current_day_type], ILI9341_WHITE);
-  drawSetPointData();
+
+  // get correct set point array
+  for(int i=0; i<4; i++) {
+    if(current_day_type == WEEKDAY) {
+      sp[i] = weekday_set_points[i];
+    }
+    else {
+      sp[i] = weekend_set_points[i];
+    }
+  }
+  
+  // prints the 4 set point boxes with their data
+  for(int i=0; i<4; i++) {
+    tft.drawRect(BOXSIZE * 13, BOXSIZE * (i*offset+5), BOXSIZE * 17, BOXSIZE * 3.5, ILI9341_WHITE); // box
+      
+    printText(BOXSIZE * 14, BOXSIZE * (i*offset+5)+20, 1, String(i+1), ILI9341_WHITE);
+    tft.drawLine(BOXSIZE * 16, BOXSIZE * (i*offset+5), BOXSIZE * 16, BOXSIZE * (i*offset+8.4), ILI9341_WHITE);
+
+    // get set point data or say it's not set
+    if(sp[i].is_set()) {
+      set_point_text = String(sp[i].get_hour()) + ":";
+      // extra zero edge case
+      if(sp[i].get_min() < 10){
+        set_point_text += String(sp[i].get_min()) + "0" + String(sp[i].get_period()) + "   " + String(sp[i].get_temp());
+      }
+      else {
+        set_point_text += String(sp[i].get_min()) + String(sp[i].get_period()) + "   " + String(sp[i].get_temp());
+      }
+    }
+    else {
+      set_point_text = "Not Set";
+    }
+    printText(BOXSIZE * 17, BOXSIZE * (i*offset+5)+20, 1, set_point_text, ILI9341_WHITE);
+  }    
 }
 
-void drawSetPointData() {
-  // get correct SetPoint object
+/**
+ * Edit individual set point page
+ */
+void drawEditSetPointPage() {
+  String day_type;
   SetPoint sp;
-  // TODO: case for not set
-  if(current_day_type == WEEKDAY) { sp = weekday_set_points[current_set_point]; }
-  else { sp = weekend_set_points[current_set_point]; }
-
-  // set point box
-  tft.drawRect(BOXSIZE * 13, BOXSIZE * 9, BOXSIZE * 17, BOXSIZE * 7, ILI9341_WHITE);
-
-  String set_time = String(sp.get_hour()) + ":" + String(sp.get_min());
-  if(sp.is_am_on()) { set_time = set_time + "AM"; }
-  else { set_time = set_time + "PM"; }
-
-  // time
-  printText(BOXSIZE * 18, BOXSIZE * 11, 1, set_time, ILI9341_WHITE);
-
-  // temp
-  printText(BOXSIZE * 19.5, BOXSIZE * 14.7, 2, String(sp.get_temp()), ILI9341_WHITE);
-
-  // set point number
-  tft.drawRect(BOXSIZE * 13, BOXSIZE * 13.7, 20, 23, ILI9341_WHITE);
-  printText(BOXSIZE * 13.5, BOXSIZE * 15.4, 1, String(current_set_point), ILI9341_WHITE);
-
-  // draw up/down arrow
-  if(current_set_point == 1) {
-    // down
-    drawArrow(BOXSIZE * 20, BOXSIZE * 18, ARROW_WIDTH, ARROW_HEIGHT, ILI9341_WHITE);
-  }
-  else if (current_set_point == 4){
-    // up
-    drawArrow(BOXSIZE * 20, BOXSIZE * 7, ARROW_WIDTH, -ARROW_HEIGHT, ILI9341_WHITE);
+  if(current_day_type == WEEKDAY) {
+    sp = weekday_set_points[current_set_point];
+    day_type = "Weekday";
   }
   else {
-    drawArrows(BOXSIZE * 20, BOXSIZE * 7, ARROW_WIDTH, ARROW_HEIGHT, BOXSIZE * 11, ILI9341_WHITE);
+    sp = weekend_set_points[current_set_point];
+    day_type = "Weekend";
   }
-}
-
-void drawEditSetPointPage() {
-  SetPoint sp;
-  sp = weekday_set_points[current_set_point];
-//  if(current_day_type = WEEKDAY) {
-//    sp = weekday_set_points[current_set_point];
-//  }
+  
   //title
-  //TODO: check this sp.get_day_type()
-  printText(BOXSIZE * 7, BOXSIZE *  2.5, 1, sp.get_day_type() + " Set Point " + String(current_set_point), ILI9341_WHITE);
+  printText(BOXSIZE * 7, BOXSIZE *  2.5, 1, day_type + " Set Point " + String(current_set_point+1), ILI9341_WHITE);
   
   // toggling arrows
   drawArrows(BOXSIZE * 5, BOXSIZE * 7.5, ARROW_WIDTH, ARROW_HEIGHT, ARROWS_OFFSET, ILI9341_WHITE);   // temp
@@ -635,7 +687,7 @@ void drawEditSetPointPage() {
   printText(BOXSIZE * 27, BOXSIZE * 13.5, 1, "PM", ILI9341_WHITE);
 
   // selected line
-  if (sp.is_am_on()) {
+  if (sp.get_period() == "AM") {
     tft.fillRect(270, 90, 27, 2, ILI9341_WHITE);
   }
   else {
@@ -669,6 +721,7 @@ void printText(int x_start, int y_start, int text_size, String text, uint16_t co
   tft.print(text);
 }
 
+// overloaded version for Bold fonts
 void printText(int x_start, int y_start, int text_size, String text, uint16_t color, bool Bold) {
   tft.setFont(&FreeSansBold9pt7b);
   tft.setCursor(x_start, y_start);
@@ -785,8 +838,23 @@ void printCurrentTemp(){
 
 // Prints the Day of Week and current time
 void printDOWandTime(){
-  //updateTimeHomePage();
-  printText(BOXSIZE * 20, BOXSIZE * 1.5, 1, "Wed, 12:00AM", ILI9341_WHITE);
+  Clock = rtc.now();
+  int hr = Clock.hour();
+  int mn = Clock.minute();
+  String mn_;
+  String period = "AM";
+  
+  if(Clock.hour() > 12) {
+    hr = Clock.hour() - 12;
+    period = "PM";
+  }
+
+  if(mn < 10) {
+    mn_ = "0" + String(mn);
+  }
+  
+  String str = "Fri " + String(hr) + ":" + String(mn) + " " +period;
+  printText(BOXSIZE * 20, BOXSIZE * 1.5, 1, str, ILI9341_WHITE);
 }
 
 // Prints the set temperature
@@ -798,10 +866,3 @@ void getTemp() {
   reading = analogRead(temp_pin);
   tempF = (reading / 9.31 * 1.8 + 32);
 }
-
-//void updateTimeHomePage() {
-//  Clock = rtc.now();
-//  String dateTime = String(dayNames[Clock.dayOfTheWeek()]) + String(", ") + String(Clock.hour())
-//                    + String(":") + String(Clock.minute()) + String(am_pm[am_selected]);
-//  printText(BOXSIZE * 20, BOXSIZE * 1.5, 1, dateTime, ILI9341_WHITE);
-//}
