@@ -6,6 +6,9 @@
 #include <Adafruit_FT6206.h>
 #include "RTClib.h"
 #include <EEPROM.h>
+// Libraries used for the temperature sensor
+#include <OneWire.h> 
+#include <DallasTemperature.h>
 
 
 #define TFT_CS 10
@@ -21,6 +24,8 @@
 #define COOL_MODE 0
 #define HEAT_MODE 1
 #define ATUO_MODE 2
+// Data wire is plugged into pin 2 on Arduino
+#define ONE_WIRE_BUS 2 
 
 
 // pages
@@ -29,6 +34,15 @@
 #define TIME_SETTINGS_PAGE 2
 #define SET_POINTS_PAGE 3
 #define EDIT_SET_POINT_PAGE 4
+
+
+// Setup one wire instance to communicate with temp sensor
+OneWire oneWire(ONE_WIRE_BUS); 
+// Pass onewire reference to Dallas Temp.
+DallasTemperature sensors(&oneWire);
+
+
+
 
 
 /**
@@ -120,6 +134,9 @@ void setup() {
   while (!Serial);
  
   Serial.begin(115200);
+
+  // Start up the library 
+  sensors.begin(); 
   
   tft.begin();
 
@@ -176,7 +193,20 @@ void loop() {
     real_time_min = Clock.minute();
     printDOWandTime(); 
   }
+
+  
   //TODO: get real_temp
+  getTemp();
+  
+  if(real_temp != prev_real_temp && !ts.touched()){
+    // Change LCD to reflect current temp
+    printCurrentTemp();
+    // Set real_temp to prev_real_temp
+    prev_real_temp = real_temp;
+    
+  }
+
+  
   //TODO: get time from RTC (or EEPROM??)
 //  byte temp;
 //  for(int i=0; i<3; i++)
@@ -1120,6 +1150,8 @@ void printSetTemp() {
 }
 
 void getTemp() {
-  reading = analogRead(temp_pin);
-  tempF = (reading / 9.31 * 1.8 + 32);
+  sensors.requestTemperatures();
+  real_temp = sensors.getTempFByIndex(0);
+  // Rounds answer to nearst digit
+  real_temp = real_temp < 0 ? real_temp - 0.5 : real_temp + 0.5;
 }
