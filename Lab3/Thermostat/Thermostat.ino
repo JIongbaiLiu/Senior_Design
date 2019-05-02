@@ -143,11 +143,6 @@ void setup() {
         Serial.println("RTC is NOT running!");
         rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
       }
-      // slated for deletion
-//      else
-//      {
-//       rtc.adjust(DateTime(2014, 1, 21, 3, 15, 0));
-//      }
 
   //---------sandbox space-----------
   //write weekday set point 1, EEPROM indicies 0,1,2
@@ -179,57 +174,7 @@ void loop() {
   }
   //TODO: get real_temp
   //TODO: get time from RTC (or EEPROM??)
-//  byte temp;
-//  for(int i=0; i<3; i++)
-//  {
-//    temp = EEPROM.read(i);
-//    SetPoints[i] = (int) temp;
-//    //Serial.println(SetPoints[i]);
-//  }
-//  weekday_set_points[0].set_values("Weekday", SetPoints[0], SetPoints[1], SetPoints[2], "PM");
-//  for(int i=0; i<24; i=i+3)
-  {
-//    weekday_set_points[i/3].set_values("Weekday", 6, 30, 69, "PM");
-  }
 
-  
-//  for(int i=0; i<24; i=i+3)
-//  {
-//      if(i<12)
-//      {
-//        if(SetPoints[i] > 12)
-//        {
-//          weekday_set_points[i/3].set_values("Weekday", SetPoints[i]-12, SetPoints[i+1], SetPoints[i+2], "PM");
-//          Serial.println("1");
-//        }
-//        else if (SetPoints[i] == 0)
-//        {
-//          weekday_set_points[i/3].set_values(weekday_set_points[i/3].get_day_type(), 12, SetPoints[i+1], SetPoints[i+2], weekday_set_points[i/3].get_period());
-//          Serial.println("2");
-//        }
-//        else
-//        {
-//          //weekday_set_points[i/3].set_values("Weekday", SetPoints[i], SetPoints[i+1], SetPoints[i+2], "PM");
-//          weekday_set_points[i/3].set_values("Weekday", 0, 0, 0, "PM");
-//          //Serial.println("3");
-//        }
-//      }
-//      else
-//      {
-//        if(SetPoints[i] > 12)
-//        {
-//          weekend_set_points[i/3].set_values(weekend_set_points[i/3].get_day_type(), SetPoints[i]-12, SetPoints[i+1], SetPoints[i+2], weekend_set_points[i/3].get_period());
-//        }
-//        else if (SetPoints[i] == 0)
-//        {
-//          weekend_set_points[i/3].set_values(weekend_set_points[i/3].get_day_type(), 12, SetPoints[i+1], SetPoints[i+2], weekend_set_points[i/3].get_period());
-//        }
-//        else
-//        {
-//          weekend_set_points[i/3].set_values(weekend_set_points[i/3].get_day_type(), SetPoints[i], SetPoints[i+1], SetPoints[i+2], weekend_set_points[i/3].get_period());
-//        }
-//      }
-//  }
   
   if(!ts.touched()){
     currently_touched = false;
@@ -484,6 +429,8 @@ void loop() {
               current_day_type = WEEKDAY;
             }
             updateText(BOXSIZE * 2, BOXSIZE * 13.5, 1, day_type[previous_day_type], day_type[current_day_type]);
+        
+            drawSetPointsPage();
           }
           
           // down arrow day type
@@ -498,6 +445,7 @@ void loop() {
                 current_day_type = WEEKDAY;
             }
             updateText(BOXSIZE * 2, BOXSIZE * 13.5, 1, day_type[previous_day_type], day_type[current_day_type]);
+            
           }
           
           // set point 1
@@ -512,18 +460,9 @@ void loop() {
               if(curr_edit_hour > 12) {
                 curr_edit_hour -= 12;
               }
-//              prev_edit_hour = curr_edit_hour;
               curr_edit_min = EEPROM.read(current_set_point*3+1);
-//              prev_edit_min = curr_edit_min;
               curr_edit_temp = EEPROM.read(current_set_point*3+2);
-//              prev_edit_temp = curr_edit_temp;
-//              clearScreen();
-//              drawEditSetPointPage();
-            }
-            else {
-              //curr_edit_hour = 6;
-              //curr_edit_min = 30;
-             // curr_edit_temp = 70;
+
             }
             prev_edit_hour = curr_edit_hour;
             prev_edit_min = curr_edit_min;
@@ -691,9 +630,9 @@ void loop() {
              EEPROM.write(current_set_point*3+2, curr_edit_temp);
            }
            else {
-             EEPROM.write(current_set_point*3+12, 8);
-             EEPROM.write(current_set_point*3+12+1, 04);
-             EEPROM.write(current_set_point*3+12+2, 17);
+             EEPROM.write(current_set_point*3+12, curr_edit_hour);
+             EEPROM.write(current_set_point*3+12+1, curr_edit_min);
+             EEPROM.write(current_set_point*3+12+2, curr_edit_temp);
            }
            current_page = SET_POINTS_PAGE;
            clearScreen();
@@ -703,12 +642,14 @@ void loop() {
          //cancel
          // TODO: move down
          if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 15.5) {
-          if(EEPROM.read(current_set_point*3) != NOT_SET)
+          int index_offset = 0;
+          if(current_day_type == WEEKEND) { index_offset = 12; }
+          if(EEPROM.read(current_set_point*3+index_offset) != NOT_SET)
           {
             // clear eeprom
-            EEPROM.write(current_set_point*3, 255);
-            EEPROM.write(current_set_point*3+1, 255);
-            EEPROM.write(current_set_point*3+2, 255);
+            EEPROM.write(current_set_point*3+index_offset, 255);
+            EEPROM.write(current_set_point*3+1+index_offset, 255);
+            EEPROM.write(current_set_point*3+2+index_offset, 255);
           }
            current_page = SET_POINTS_PAGE;
            clearScreen();
@@ -839,16 +780,19 @@ void drawSetPointsPage() {
   drawArrows(BOXSIZE * 3.5, BOXSIZE * 10, 30, 20, 60, ILI9341_WHITE);
   printText(BOXSIZE * 2, BOXSIZE * 13.5, 1, day_type[current_day_type], ILI9341_WHITE);
 
-  // get correct set point array
-  for(int i=0; i<4; i++) {
-    if(current_day_type == WEEKDAY) {
-      sp[i] = weekday_set_points[i];
-    }
-    else {
-      sp[i] = weekend_set_points[i];
-    }
-  }
-  
+//  // get correct set point array
+//  for(int i=0; i<4; i++) {
+//    if(current_day_type == WEEKDAY) {
+//      sp[i] = weekday_set_points[i];
+//    }
+//    else {
+//      sp[i] = weekend_set_points[i];
+//    }
+//  }
+//  
+  int index_offset = 0;
+  if (current_day_type == WEEKEND) { index_offset = 12; }
+
   // prints the 4 set point boxes with their data
   for(int i=0; i<4; i++) {
     tft.drawRect(BOXSIZE * 13, BOXSIZE * (i*offset+5), BOXSIZE * 17, BOXSIZE * 3.5, ILI9341_WHITE); // box
@@ -858,10 +802,10 @@ void drawSetPointsPage() {
 
     // get data from eeprom
     String set_point_text;
-    if(EEPROM.read(i*3) != 255) {
-      int hr = EEPROM.read(i*3);
-      int mn = EEPROM.read(i*3+1);
-      String temp = String(EEPROM.read(i*3+2));
+    if(EEPROM.read(i*3+index_offset) != 255) {
+      int hr = EEPROM.read(i*3+index_offset);
+      int mn = EEPROM.read(i*3+1+index_offset);
+      String temp = String(EEPROM.read(i*3+2+index_offset));
       String mn_ = String(mn);
       String period = "AM";
       if(hr == 0) {
@@ -882,21 +826,7 @@ void drawSetPointsPage() {
     else {
       set_point_text = "Not Set";
     }
-
-//    // get set point data or say it's not set
-//    if(sp[i].is_set()) {
-//      set_point_text = String(sp[i].get_hour()) + ":";
-//      // extra zero edge case
-//      if(sp[i].get_min() < 10){
-//        set_point_text += String(sp[i].get_min()) + "0" + String(sp[i].get_period()) + "   " + String(sp[i].get_temp());
-//      }
-//      else {
-//        set_point_text += String(sp[i].get_min()) + String(sp[i].get_period()) + "   " + String(sp[i].get_temp());
-//      }
-//    }
-//    else {
-//      set_point_text = "Not Set";
-//    }
+    tft.fillRect(BOXSIZE * 16.5, BOXSIZE * (i*offset+5.5), BOXSIZE * 13, BOXSIZE * 2.5, ILI9341_BLACK);
     printText(BOXSIZE * 17, BOXSIZE * (i*offset+5)+20, 1, set_point_text, ILI9341_WHITE);
   }    
 }
@@ -909,12 +839,10 @@ void drawEditSetPointPage() {
   int i;
   SetPoint sp;
   if(current_day_type == WEEKDAY) {
-//    sp = weekday_set_points[current_set_point];
     i = current_set_point*3;
     day_type = "Weekday";
   }
   else {
-//    sp = weekend_set_points[current_set_point];
     i = current_set_point*3+12;
     day_type = "Weekend";
   }
@@ -1126,6 +1054,7 @@ void drawBottomBar() {
   printText(BOXSIZE * 23.5, BOXSIZE * 22.5, 1, label, color);
 }
 
+// future work
 //void printMode() {
 //  if (set_temp > real_temp) { //cool or off
 //    if(mode == COOL_MODE || mode == AUTO_MODE) {
