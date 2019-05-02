@@ -5,6 +5,7 @@
 #include <Fonts/FreeSansBold9pt7b.h>
 #include <Adafruit_FT6206.h>
 #include "RTClib.h"
+#include <EEPROM.h>
 
 
 #define TFT_CS 10
@@ -71,6 +72,7 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
 Adafruit_FT6206 ts = Adafruit_FT6206();
 RTC_DS1307 rtc;
 DateTime Clock;
+int SetPoints [24] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 
 // home page vars
 int real_temp = 75;
@@ -80,11 +82,12 @@ int prev_set_temp = set_temp;
 bool currently_touched = false;
 bool auto_on = false;
 bool hold_on = false;
-int mode = 0;
+int mode = COOL_MODE;
 const char* modes[2] = {"Cool Mode", "Heat Mode"};
 int temp_pin = 3;
 double tempF;
 int reading;
+int real_time_min;
 
 // time setting page vars
 bool am_selected = false;
@@ -101,6 +104,15 @@ int current_day_type = WEEKDAY;
 const char* day_type[2] = {"Weekday", "Weekend"};
 SetPoint weekday_set_points[4];
 SetPoint weekend_set_points[4];
+
+// EDIT_SET_POINT_PAGE vars
+int curr_edit_hour;
+int prev_edit_hour;
+int curr_edit_min;
+int prev_edit_min;
+int curr_edit_temp;
+int prev_edit_temp;
+int am_edit_selected = false;
 
 
 void setup() {
@@ -137,29 +149,86 @@ void setup() {
 //      }
 
   //---------sandbox space-----------
-//  current_page = SET_POINTS_PAGE;
-  SetPoint sp = SetPoint();
-  sp.set_values("Weekday", 10, 35, 34, "AM");
-  weekday_set_points[0] = sp;
-
-  sp.set_values("Weekday", 11, 35, 34, "PM");
-  weekday_set_points[1] = sp;
-
-  sp.set_values("Weekday", 12, 00, 68, "PM");
-  weekday_set_points[2] = sp;
-
-  sp.set_values("Weekday", 5, 30, 74, "PM");
-  weekday_set_points[3] = sp;
-    
-//  drawSetPointsPage();
+  //write weekday set point 1, EEPROM indicies 0,1,2
+  for(int i=0; i<24; i=i+3)
+  EEPROM.write(0, 5);
+  EEPROM.write(1, 30);
+  EEPROM.write(2, 68);
+  EEPROM.write(3, 6);
+  EEPROM.write(4, 30);
+  EEPROM.write(5, 69);
+  EEPROM.write(6, 7);
+  EEPROM.write(7, 30);
+  EEPROM.write(8, 70);
+  EEPROM.write(9, 8);
+  EEPROM.write(10, 30);
+  EEPROM.write(11, 71);
+  
+  current_page = SET_POINTS_PAGE;
+  drawSetPointsPage();
   //---------------------------------
-  current_page = HOME_PAGE;
-  drawHomeScreen();
+//  drawHomeScreen();
 }
 
 void loop() {
+  Clock = rtc.now();
+  if(real_time_min != Clock.minute() && current_page == HOME_PAGE) {
+    real_time_min = Clock.minute();
+    printDOWandTime(); 
+  }
   //TODO: get real_temp
   //TODO: get time from RTC (or EEPROM??)
+//  byte temp;
+//  for(int i=0; i<3; i++)
+//  {
+//    temp = EEPROM.read(i);
+//    SetPoints[i] = (int) temp;
+//    //Serial.println(SetPoints[i]);
+//  }
+//  weekday_set_points[0].set_values("Weekday", SetPoints[0], SetPoints[1], SetPoints[2], "PM");
+//  for(int i=0; i<24; i=i+3)
+  {
+//    weekday_set_points[i/3].set_values("Weekday", 6, 30, 69, "PM");
+  }
+
+  
+//  for(int i=0; i<24; i=i+3)
+//  {
+//      if(i<12)
+//      {
+//        if(SetPoints[i] > 12)
+//        {
+//          weekday_set_points[i/3].set_values("Weekday", SetPoints[i]-12, SetPoints[i+1], SetPoints[i+2], "PM");
+//          Serial.println("1");
+//        }
+//        else if (SetPoints[i] == 0)
+//        {
+//          weekday_set_points[i/3].set_values(weekday_set_points[i/3].get_day_type(), 12, SetPoints[i+1], SetPoints[i+2], weekday_set_points[i/3].get_period());
+//          Serial.println("2");
+//        }
+//        else
+//        {
+//          //weekday_set_points[i/3].set_values("Weekday", SetPoints[i], SetPoints[i+1], SetPoints[i+2], "PM");
+//          weekday_set_points[i/3].set_values("Weekday", 0, 0, 0, "PM");
+//          //Serial.println("3");
+//        }
+//      }
+//      else
+//      {
+//        if(SetPoints[i] > 12)
+//        {
+//          weekend_set_points[i/3].set_values(weekend_set_points[i/3].get_day_type(), SetPoints[i]-12, SetPoints[i+1], SetPoints[i+2], weekend_set_points[i/3].get_period());
+//        }
+//        else if (SetPoints[i] == 0)
+//        {
+//          weekend_set_points[i/3].set_values(weekend_set_points[i/3].get_day_type(), 12, SetPoints[i+1], SetPoints[i+2], weekend_set_points[i/3].get_period());
+//        }
+//        else
+//        {
+//          weekend_set_points[i/3].set_values(weekend_set_points[i/3].get_day_type(), SetPoints[i], SetPoints[i+1], SetPoints[i+2], weekend_set_points[i/3].get_period());
+//        }
+//      }
+//  }
   
   if(!ts.touched()){
     currently_touched = false;
@@ -368,7 +437,15 @@ void loop() {
            else if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 19 && p.y <= BOXSIZE * 27.5) {
              int hr = current_hour;
              // set the RTC
-             if(!am_selected) {
+             if(am_selected && hr == 12) {
+              //rtc.adjust(DateTime(2014, 1, 21, 0, current_minute, 0));
+              hr = 0;
+             }
+             else if(!am_selected && hr == 12) {
+              //rtc.adjust(DateTime(2014, 1, 21, 12, current_minute, 0));
+              hr = 12;
+             }
+             else if(!am_selected) {
               hr += 12;
              }
              rtc.adjust(DateTime(2014, 1, 21, hr, current_minute, 0));
@@ -426,6 +503,15 @@ void loop() {
           else if(p.x >= BOXSIZE * 5 && p.x <= BOXSIZE * 8.5 && p.y >= BOXSIZE * 2 && p.y <= BOXSIZE * 19) {
             current_set_point = 0;
             current_page = EDIT_SET_POINT_PAGE;
+
+            // set EDIT_SET_POINT_PAGE vars
+            // TODO: try not to repeat this code 3 more times
+            curr_edit_hour = EEPROM.read(current_set_point*3);
+            prev_edit_hour = curr_edit_hour;
+            curr_edit_min = EEPROM.read(current_set_point*3+1);
+            prev_edit_min = curr_edit_min;
+            curr_edit_temp = EEPROM.read(current_set_point*3+2);
+            prev_edit_temp = curr_edit_temp;
             clearScreen();
             drawEditSetPointPage();
           }
@@ -457,10 +543,142 @@ void loop() {
         
          
         case EDIT_SET_POINT_PAGE:
+          // day up arrow
+          if(p.x >= BOXSIZE * 6 && p.x <= BOXSIZE * 8 && p.y >= BOXSIZE * 23 && p.y <= BOXSIZE * 26) {
+            if (!(curr_edit_temp > 89)) {
+              prev_edit_temp = curr_edit_temp;
+              curr_edit_temp++;
+              updateText(BOXSIZE * 4.5, BOXSIZE * 11.5, 2, String(prev_edit_temp), String(curr_edit_temp));
+            }
+          }
+
+          // day down arrow
+          else if(p.x >= BOXSIZE * 14 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 23 && p.y <= BOXSIZE * 26) {
+            if (!(curr_edit_temp < 41)) {
+              prev_edit_temp = curr_edit_temp;
+              curr_edit_temp--;
+              updateText(BOXSIZE * 4.5, BOXSIZE * 11.5, 2, String(prev_edit_temp), String(curr_edit_temp));
+            }
+          }
+
+          // hour up arrow
+          else if(p.x >= BOXSIZE * 6 && p.x <= BOXSIZE * 8 && p.y >= BOXSIZE * 13 && p.y <= BOXSIZE * 16) {
+            if(curr_edit_hour < 12) {
+              prev_edit_hour = curr_edit_hour;
+              curr_edit_hour++;
+              float ref_x;
+              if(curr_edit_hour > 9 && prev_edit_hour != 9) {
+                ref_x = 15;
+              }
+              // special case when going from 9 to 10
+              else if(curr_edit_hour > 9 && prev_edit_hour == 9){
+                  updateText(BOXSIZE * 16.5, BOXSIZE * 11.5, BOXSIZE * 15, 2, String(prev_edit_hour), String(curr_edit_hour));
+                  break;
+              }
+              else {
+                ref_x = 16.5;
+              }
+              updateText(BOXSIZE * ref_x, BOXSIZE * 11.5, 2, String(prev_edit_hour), String(curr_edit_hour));
+            }
+          }
+
+          // hour down arrow
+          else if(p.x >= BOXSIZE * 14 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 13 && p.y <= BOXSIZE * 16) {
+            if (curr_edit_hour > 1) {
+              prev_edit_hour = curr_edit_hour;
+              curr_edit_hour--;
+            
+              float ref_x;
+              if(curr_edit_hour < 10 && prev_edit_hour != 10) {
+                ref_x = 16.5;
+              }
+              // special case when going from 10 to 9
+              else if(curr_edit_hour < 10 && prev_edit_hour == 10) {
+                updateText(BOXSIZE * 15, BOXSIZE * 11.5, BOXSIZE * 16.5, 2, String(prev_edit_hour), String(curr_edit_hour));
+                break;
+              }
+              else {
+                ref_x = 15;
+              }
+              updateText(BOXSIZE * ref_x, BOXSIZE * 11.5, 2, String(prev_edit_hour), String(curr_edit_hour));
+            }
+          }
+
+          // minute up arrow
+          else if(p.x >= BOXSIZE * 6 && p.x <= BOXSIZE * 8 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 10) {
+            if(curr_edit_min < 59){
+              prev_edit_min = curr_edit_min;
+              curr_edit_min++;
+            
+              if(curr_edit_min > 9 && prev_edit_min != 9) {
+                updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(prev_edit_min), String(curr_edit_min));
+              }
+              // special case going from 9 to 10
+              else if(curr_edit_min > 9 && prev_edit_min == 9){
+                updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(prev_edit_min), String(curr_edit_min));
+              }
+              else {
+                updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(prev_edit_min), String ("0") + String(curr_edit_min));
+              }
+            }
+          }
+
+           // minute down arrow
+           else if(p.x >= BOXSIZE * 14 && p.x <= BOXSIZE * 16 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 10) {
+             if(curr_edit_min > 0) {
+               prev_edit_min = curr_edit_min;
+               curr_edit_min--;
+             
+               if(curr_edit_min > 9 && prev_edit_min != 10) {
+                 updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(prev_edit_min), String(curr_edit_min));
+               }
+               // special case going from 10 to 9
+               else if(curr_edit_min == 9 && prev_edit_min == 10){
+                 updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(prev_edit_min), String ("0") + String(curr_edit_min));
+               }
+               else {
+                 updateText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(prev_edit_min), String ("0") + String(curr_edit_min));
+               }
+             }
+           }
+
+          // am
+           else if(p.x >= BOXSIZE * 7.5 && p.x <= BOXSIZE * 9.5 && p.y >= BOXSIZE * 1.5 && p.y <= BOXSIZE * 5.5) {
+             am_edit_selected = true;
+             tft.fillRect(270, 90, 27, 2, ILI9341_WHITE);   // am line on
+             tft.fillRect(270, 140, 27, 2, ILI9341_BLACK);  // pm line off
+           }
+
+           // pm
+           else if(p.x >= BOXSIZE * 12.5 && p.x <= BOXSIZE * 14.5 && p.y >= BOXSIZE * 1.5 && p.y <= BOXSIZE * 5.5) {
+             am_edit_selected = false;
+             tft.fillRect(270, 90, 27, 2, ILI9341_BLACK);   // am line off
+             tft.fillRect(270, 140, 27, 2, ILI9341_WHITE);  // pm line on
+           }
+          
          // save
          // TODO: move down
          if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 19 && p.y <= BOXSIZE * 27.5) {
-           // save stuff probably
+           if(current_day_type == WEEKDAY) {
+             // put into eeprom
+             if(am_edit_selected && curr_edit_hour == 12) {
+              curr_edit_hour = 0;
+             }
+             else if(!am_edit_selected && curr_edit_hour == 12) {
+              curr_edit_hour = 12;
+             }
+             else if(!am_edit_selected) {
+              curr_edit_hour += 12;
+             }
+             EEPROM.write(current_set_point*3, curr_edit_hour);
+             EEPROM.write(current_set_point*3+1, curr_edit_min);
+             EEPROM.write(current_set_point*3+2, curr_edit_temp);
+           }
+           else {
+             EEPROM.write(current_set_point*3+12, 8);
+             EEPROM.write(current_set_point*3+12+1, 04);
+             EEPROM.write(current_set_point*3+12+2, 17);
+           }
            current_page = SET_POINTS_PAGE;
            clearScreen();
            drawSetPointsPage();
@@ -528,8 +746,6 @@ void drawSettingsScreen() {
  * Draws Time Settings Page
  */
 void drawTimeSettingPage() {
-  Clock = rtc.now();
-  int hr = Clock.hour();
   // Day label
   printText(BOXSIZE * 5, BOXSIZE * 2, 1, "Day", ILI9341_WHITE);
 
@@ -545,20 +761,19 @@ void drawTimeSettingPage() {
   printText(BOXSIZE * 3, BOXSIZE * 11.5, 2, String(dayNames[current_day]), ILI9341_WHITE);
 
   // hour
-  if(Clock.hour() > 12) { hr -= 12; }
   if(current_hour > 9) {
-    printText(BOXSIZE * 15, BOXSIZE * 11.5, 2, String(hr), ILI9341_WHITE);
+    printText(BOXSIZE * 15, BOXSIZE * 11.5, 2, String(current_hour), ILI9341_WHITE);
   }
   else {
-    printText(BOXSIZE * 16.5, BOXSIZE * 11.5, 2, String(hr), ILI9341_WHITE);
+    printText(BOXSIZE * 16.5, BOXSIZE * 11.5, 2, String(current_hour), ILI9341_WHITE);
   }
   
   // minute
   if(current_minute > 9) {
-    printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(Clock.minute()), ILI9341_WHITE);
+    printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(current_minute), ILI9341_WHITE);
   }
   else {
-    printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(Clock.minute()), ILI9341_WHITE);
+    printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(current_minute), ILI9341_WHITE);
   }
 
   // time colon
@@ -618,20 +833,29 @@ void drawSetPointsPage() {
     printText(BOXSIZE * 14, BOXSIZE * (i*offset+5)+20, 1, String(i+1), ILI9341_WHITE);
     tft.drawLine(BOXSIZE * 16, BOXSIZE * (i*offset+5), BOXSIZE * 16, BOXSIZE * (i*offset+8.4), ILI9341_WHITE);
 
-    // get set point data or say it's not set
-    if(sp[i].is_set()) {
-      set_point_text = String(sp[i].get_hour()) + ":";
-      // extra zero edge case
-      if(sp[i].get_min() < 10){
-        set_point_text += String(sp[i].get_min()) + "0" + String(sp[i].get_period()) + "   " + String(sp[i].get_temp());
-      }
-      else {
-        set_point_text += String(sp[i].get_min()) + String(sp[i].get_period()) + "   " + String(sp[i].get_temp());
-      }
+    // get data from eeprom
+    String set_point_text;
+    if(EEPROM.read(i*3) != 255) {
+      set_point_text = String(EEPROM.read(i*3)) + ":" + String(EEPROM.read(i*3+1)) + "  " + String(EEPROM.read(i*3+2));
     }
     else {
       set_point_text = "Not Set";
     }
+
+//    // get set point data or say it's not set
+//    if(sp[i].is_set()) {
+//      set_point_text = String(sp[i].get_hour()) + ":";
+//      // extra zero edge case
+//      if(sp[i].get_min() < 10){
+//        set_point_text += String(sp[i].get_min()) + "0" + String(sp[i].get_period()) + "   " + String(sp[i].get_temp());
+//      }
+//      else {
+//        set_point_text += String(sp[i].get_min()) + String(sp[i].get_period()) + "   " + String(sp[i].get_temp());
+//      }
+//    }
+//    else {
+//      set_point_text = "Not Set";
+//    }
     printText(BOXSIZE * 17, BOXSIZE * (i*offset+5)+20, 1, set_point_text, ILI9341_WHITE);
   }    
 }
@@ -641,16 +865,28 @@ void drawSetPointsPage() {
  */
 void drawEditSetPointPage() {
   String day_type;
+  int i;
   SetPoint sp;
   if(current_day_type == WEEKDAY) {
-    sp = weekday_set_points[current_set_point];
+//    sp = weekday_set_points[current_set_point];
+    i = current_set_point*3;
     day_type = "Weekday";
   }
   else {
-    sp = weekend_set_points[current_set_point];
+//    sp = weekend_set_points[current_set_point];
+    i = current_set_point*3+12;
     day_type = "Weekend";
   }
-  
+
+  int hr = EEPROM.read(i);
+  int mn = EEPROM.read(i+1);
+  int temp = EEPROM.read(i+2);
+
+//  // scale hr
+//  if(hr > 12) {
+//    hr -= 12;
+//  }
+//  
   //title
   printText(BOXSIZE * 7, BOXSIZE *  2.5, 1, day_type + " Set Point " + String(current_set_point+1), ILI9341_WHITE);
   
@@ -660,22 +896,22 @@ void drawEditSetPointPage() {
   drawArrows(BOXSIZE * 22, BOXSIZE * 7.5, ARROW_WIDTH, ARROW_HEIGHT, ARROWS_OFFSET, ILI9341_WHITE);  // minute
 
   // temp
-  printText(BOXSIZE * 4.5, BOXSIZE * 11.5, 2, String(sp.get_temp()), ILI9341_WHITE);
+  printText(BOXSIZE * 4.5, BOXSIZE * 11.5, 2, String(temp), ILI9341_WHITE);
 
   // hour
-  if(sp.get_hour() > 9) {
-    printText(BOXSIZE * 15, BOXSIZE * 11.5, 2, String(sp.get_hour()), ILI9341_WHITE);
+  if(hr > 9) {
+    printText(BOXSIZE * 15, BOXSIZE * 11.5, 2, String(hr), ILI9341_WHITE);
   }
   else {
-    printText(BOXSIZE * 16.5, BOXSIZE * 11.5, 2, String(sp.get_hour()), ILI9341_WHITE);
+    printText(BOXSIZE * 16.5, BOXSIZE * 11.5, 2, String(hr), ILI9341_WHITE);
   }
   
   // minute
-  if(sp.get_min() > 9) {
-    printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(sp.get_min()), ILI9341_WHITE);
+  if(mn > 9) {
+    printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String(mn), ILI9341_WHITE);
   }
   else {
-    printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(sp.get_min()), ILI9341_WHITE);
+    printText(BOXSIZE * 21.5, BOXSIZE * 11.5, 2, String ("0") + String(mn), ILI9341_WHITE);
   }
 
   // time colon
@@ -687,7 +923,7 @@ void drawEditSetPointPage() {
   printText(BOXSIZE * 27, BOXSIZE * 13.5, 1, "PM", ILI9341_WHITE);
 
   // selected line
-  if (sp.get_period() == "AM") {
+  if (am_edit_selected) {
     tft.fillRect(270, 90, 27, 2, ILI9341_WHITE);
   }
   else {
@@ -781,6 +1017,7 @@ void drawBottomBar() {
   tft.drawLine(0, 200, 320, 200, ILI9341_WHITE);
 
   // Cool/Heat status
+//  printMode();
   printText(BOXSIZE, BOXSIZE * 22.5, 1, modes[mode], ILI9341_WHITE);
 
   // Auto status
@@ -823,6 +1060,18 @@ void drawBottomBar() {
   printText(BOXSIZE * 23.5, BOXSIZE * 22.5, 1, label, color);
 }
 
+//void printMode() {
+//  if (set_temp > real_temp) { //cool or off
+//    if(mode == COOL_MODE || mode == AUTO_MODE) {
+//      // print cooling
+//    }
+//    else {
+//      
+//    }
+//  }
+//  printText(BOXSIZE, BOXSIZE * 22.5, 1, modes[mode], ILI9341_WHITE);
+//}
+
 // Prints the current temperature
 void printCurrentTemp(){
   // "clear" what is there now
@@ -838,13 +1087,21 @@ void printCurrentTemp(){
 
 // Prints the Day of Week and current time
 void printDOWandTime(){
+  //clear time text
+  tft.fillRect(BOXSIZE * 19, BOXSIZE * 0, BOXSIZE * 11, BOXSIZE * 2, ILI9341_BLACK);
+  
   Clock = rtc.now();
   int hr = Clock.hour();
   int mn = Clock.minute();
-  String mn_;
+  String mn_ = String(mn);
   String period = "AM";
-  
-  if(Clock.hour() > 12) {
+  if(hr == 0) {
+    hr = 12;
+  }
+  else if(hr == 12) {
+    period = "PM";
+  }
+  else if(Clock.hour() > 12) {
     hr = Clock.hour() - 12;
     period = "PM";
   }
@@ -853,7 +1110,7 @@ void printDOWandTime(){
     mn_ = "0" + String(mn);
   }
   
-  String str = "Fri " + String(hr) + ":" + String(mn) + " " +period;
+  String str = "Fri " + String(hr) + ":" + mn_ + " " + period;
   printText(BOXSIZE * 20, BOXSIZE * 1.5, 1, str, ILI9341_WHITE);
 }
 
