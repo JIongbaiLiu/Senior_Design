@@ -17,6 +17,7 @@
 #define ARROWS_OFFSET 60
 #define WEEKDAY 0
 #define WEEKEND 1
+#define NOT_SET 255
 //do i need these?
 #define COOL_MODE 0
 #define HEAT_MODE 1
@@ -150,19 +151,19 @@ void setup() {
 
   //---------sandbox space-----------
   //write weekday set point 1, EEPROM indicies 0,1,2
-  for(int i=0; i<24; i=i+3)
-  EEPROM.write(0, 5);
-  EEPROM.write(1, 30);
-  EEPROM.write(2, 68);
-  EEPROM.write(3, 6);
-  EEPROM.write(4, 30);
-  EEPROM.write(5, 69);
-  EEPROM.write(6, 7);
-  EEPROM.write(7, 30);
-  EEPROM.write(8, 70);
-  EEPROM.write(9, 8);
-  EEPROM.write(10, 30);
-  EEPROM.write(11, 71);
+  EEPROM.write(0, 255);
+  EEPROM.write(0, 255);
+  EEPROM.write(1, 255);
+//  EEPROM.write(2, 255);
+//  EEPROM.write(3, 255);
+//  EEPROM.write(4, 255);
+//  EEPROM.write(5, 255);
+//  EEPROM.write(6, 255);
+//  EEPROM.write(7, 255);
+//  EEPROM.write(8, 255);
+//  EEPROM.write(9, 255);
+//  EEPROM.write(10, 255);
+//  EEPROM.write(11, 255);
   
   current_page = SET_POINTS_PAGE;
   drawSetPointsPage();
@@ -506,11 +507,26 @@ void loop() {
 
             // set EDIT_SET_POINT_PAGE vars
             // TODO: try not to repeat this code 3 more times
-            curr_edit_hour = EEPROM.read(current_set_point*3);
+            if (EEPROM.read(current_set_point*3) != NOT_SET) {
+              curr_edit_hour = EEPROM.read(current_set_point*3);
+              if(curr_edit_hour > 12) {
+                curr_edit_hour -= 12;
+              }
+//              prev_edit_hour = curr_edit_hour;
+              curr_edit_min = EEPROM.read(current_set_point*3+1);
+//              prev_edit_min = curr_edit_min;
+              curr_edit_temp = EEPROM.read(current_set_point*3+2);
+//              prev_edit_temp = curr_edit_temp;
+//              clearScreen();
+//              drawEditSetPointPage();
+            }
+            else {
+              //curr_edit_hour = 6;
+              //curr_edit_min = 30;
+             // curr_edit_temp = 70;
+            }
             prev_edit_hour = curr_edit_hour;
-            curr_edit_min = EEPROM.read(current_set_point*3+1);
             prev_edit_min = curr_edit_min;
-            curr_edit_temp = EEPROM.read(current_set_point*3+2);
             prev_edit_temp = curr_edit_temp;
             clearScreen();
             drawEditSetPointPage();
@@ -687,6 +703,13 @@ void loop() {
          //cancel
          // TODO: move down
          if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 7 && p.y <= BOXSIZE * 15.5) {
+          if(EEPROM.read(current_set_point*3) != NOT_SET)
+          {
+            // clear eeprom
+            EEPROM.write(current_set_point*3, 255);
+            EEPROM.write(current_set_point*3+1, 255);
+            EEPROM.write(current_set_point*3+2, 255);
+          }
            current_page = SET_POINTS_PAGE;
            clearScreen();
            drawSetPointsPage();
@@ -836,7 +859,25 @@ void drawSetPointsPage() {
     // get data from eeprom
     String set_point_text;
     if(EEPROM.read(i*3) != 255) {
-      set_point_text = String(EEPROM.read(i*3)) + ":" + String(EEPROM.read(i*3+1)) + "  " + String(EEPROM.read(i*3+2));
+      int hr = EEPROM.read(i*3);
+      int mn = EEPROM.read(i*3+1);
+      String temp = String(EEPROM.read(i*3+2));
+      String mn_ = String(mn);
+      String period = "AM";
+      if(hr == 0) {
+        hr = 12;
+      }
+      else if(hr == 12) {
+        period = "PM";
+      }
+      else if(hr > 12) {
+        hr -= 12;
+        period = "PM";
+      }
+      if(mn < 10) {
+        mn_ = "0" + String(mn);
+      }
+      set_point_text = String(hr) + ":" + mn_ + " " + period + "  " + temp + " F";
     }
     else {
       set_point_text = "Not Set";
@@ -878,15 +919,35 @@ void drawEditSetPointPage() {
     day_type = "Weekend";
   }
 
-  int hr = EEPROM.read(i);
-  int mn = EEPROM.read(i+1);
-  int temp = EEPROM.read(i+2);
 
-//  // scale hr
-//  if(hr > 12) {
-//    hr -= 12;
-//  }
-//  
+  int hr = 0;
+  int mn = 0;
+  int temp = 0;  
+  if(EEPROM.read(i) == 255)
+  {
+     hr = 12;
+     mn = 0;
+     temp = 60;
+     curr_edit_hour = hr;
+     curr_edit_min = mn;
+     curr_edit_temp = temp;
+     
+  }
+  else
+  {
+     hr = EEPROM.read(i);
+     mn = EEPROM.read(i+1);
+     temp = EEPROM.read(i+2);  
+  }
+
+  // scale hr
+  if(hr > 12) {
+    hr -= 12;
+  }
+  else if (hr == 0) {
+    hr = 12;
+  }
+  
   //title
   printText(BOXSIZE * 7, BOXSIZE *  2.5, 1, day_type + " Set Point " + String(current_set_point+1), ILI9341_WHITE);
   
@@ -935,8 +996,13 @@ void drawEditSetPointPage() {
   printText(68, 213, 1, "Save", ILI9341_WHITE);
   
   // cancel button
+  String label = "Delete";
+  if(EEPROM.read(i) == 255)
+  {
+    label = "Cancel";
+  }
   tft.drawRect(165, 190, 85, 35, ILI9341_WHITE);
-  printText(178, 213, 1, "Cancel", ILI9341_WHITE);
+  printText(178, 213, 1, label, ILI9341_WHITE);
 }
 
 /**
