@@ -23,6 +23,9 @@
 #define COOL_MODE 0
 #define HEAT_MODE 1
 #define AUTO_MODE 2
+#define OFF_MODE 4
+#define WEEKDAY_ENABLE 0
+#define WEEKEND_ENABLE 0
 #define ONE_WIRE_BUS 2
 #define RED_LED 15
 #define BLUE_LED 14
@@ -48,7 +51,7 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
 Adafruit_FT6206 ts = Adafruit_FT6206();
 RTC_DS1307 rtc;
 DateTime Clock;
-int SetPoints [24] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+int SetPoints [25] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,0};
 
 // home page vars
 int real_temp = 75;
@@ -58,13 +61,18 @@ int prev_set_temp = set_temp;
 bool currently_touched = false;
 bool auto_on = false;
 bool hold_on = false;
-int mode = AUTO_MODE;
+int weekday_Flag = 1;
+int weekend_Flag = 1;
+int pre_mode = OFF_MODE;
+int mode = OFF_MODE;
 const char* modes[3] = {"Cool Mode", "Heat Mode", "Off"};
 int temp_pin = 3;
 double tempF;
 int reading;
 int real_time_min;
 int temp_timer = 0;
+int preset = 0;
+int is_changed = prev_set_temp;
 
 // time setting page vars
 bool am_selected = false;
@@ -123,9 +131,9 @@ void setup() {
 
   //---------sandbox space-----------
   //write weekday set point 1, EEPROM indicies 0,1,2
-  EEPROM.write(0, 255);
-  EEPROM.write(0, 255);
-  EEPROM.write(1, 255);
+//  EEPROM.write(0, 255);
+//  EEPROM.write(0, 255);
+//  EEPROM.write(1, 255);
 //  EEPROM.write(2, 255);
 //  EEPROM.write(3, 255);
 //  EEPROM.write(4, 255);
@@ -138,7 +146,7 @@ void setup() {
 //  EEPROM.write(11, 255);
   
 //  current_page = SET_POINTS_PAGE;
-//  drawSetPointsPage();
+  //drawSetPointsPage();
   //---------------------------------
   drawHomeScreen();
 }
@@ -149,7 +157,72 @@ void loop() {
     real_time_min = Clock.minute();
     printDOWandTime(); 
   }
-  
+
+  if(current_page == HOME_PAGE)
+  {
+    int temp_hour = Clock.hour();
+    int temp_min = Clock.minute();
+    int index_day = EEPROM.read(24);
+    if(index_day < 5)
+    {
+      if(weekday_Flag == 0)
+      {
+          //is_changed = set_temp;
+          for(int i=0; i<12; i=i+3)
+          {
+            int set_hr = EEPROM.read(i);
+            int set_min = EEPROM.read(i+1);
+            int stored_set_temp = EEPROM.read(i+2);
+            
+            if(set_hr < temp_hour)
+            {
+                prev_set_temp = set_temp;
+                set_temp = stored_set_temp;
+                
+            }
+            else if (set_hr == temp_hour && set_min <= temp_min)
+            {
+                prev_set_temp = set_temp;
+                set_temp = stored_set_temp;
+            }
+          }
+          if(set_temp != is_changed)
+          {
+            prev_set_temp = is_changed;
+            printSetTemp();
+            is_changed = set_temp;
+          }
+      }
+    }
+    else
+    {
+      if(weekend_Flag == 0)
+      {
+          for(int i=12; i<24; i=i+3)
+          {
+            int set_hr = EEPROM.read(i);
+            int set_min = EEPROM.read(i+1);
+            int stored_set_temp = EEPROM.read(i+2);
+            if(set_temp != stored_set_temp )
+            {
+              break;
+            }
+            if(set_hr < temp_hour)
+            {
+                prev_set_temp = set_temp;
+                set_temp = stored_set_temp;
+                
+            }
+            else if (set_hr == temp_hour && set_min <= temp_min)
+            {
+                prev_set_temp = set_temp;
+                set_temp = stored_set_temp;
+            }
+          }
+      }  
+    }
+    
+  }
   
   //2.5 s
   if(temp_timer >= 600){
@@ -188,6 +261,26 @@ void loop() {
             current_page = SETTINGS_PAGE;
             clearScreen();
             drawSettingsScreen();
+          }
+
+          else if(p.x >= BOXSIZE * 20 && p.x <= BOXSIZE * 24 && p.y >= BOXSIZE * 21 && p.y <= BOXSIZE * 31)
+          {
+            switch (mode)
+            {
+              case OFF_MODE:
+                mode = COOL_MODE;
+                break;
+              case COOL_MODE:
+                mode = HEAT_MODE;
+                break;
+              case HEAT_MODE:
+                mode = OFF_MODE;
+                break;
+              default:
+                mode = OFF_MODE;
+                break;
+            }
+            drawBottomBar();
           }
 
           // auto button
@@ -372,6 +465,7 @@ void loop() {
            // TODO: move down
            else if(p.x >= BOXSIZE * 19 && p.x <= BOXSIZE * 22.5 && p.y >= BOXSIZE * 19 && p.y <= BOXSIZE * 27.5) {
              int hr = current_hour;
+             EEPROM.write(24,current_day);
              // set the RTC
              if(am_selected && hr == 12) {
               //rtc.adjust(DateTime(2014, 1, 21, 0, current_minute, 0));
@@ -436,6 +530,36 @@ void loop() {
             }
             updateText(BOXSIZE * 2, BOXSIZE * 13.5, 1, day_type[previous_day_type], day_type[current_day_type]);
             
+          }
+
+          else if (p.x >= 201 && p.x <= 240 && p.y >= 210 && p.y <= 319)
+          {
+            if(current_day_type == WEEKDAY)
+            {
+              if(weekday_Flag == 0)
+              {
+                weekday_Flag = 1;
+                drawSetPointsPage();  
+              }
+              else
+              {
+                weekday_Flag = 0;
+                drawSetPointsPage();
+              }  
+            }
+            else if(current_day_type == WEEKEND)
+            {
+              if(weekend_Flag == 0)
+              {
+                weekend_Flag = 1;
+                drawSetPointsPage();  
+              }
+              else
+              {
+                weekend_Flag = 0;
+                drawSetPointsPage();
+              }  
+            }
           }
           
           // set point 1
@@ -771,8 +895,33 @@ void drawSetPointsPage() {
   printText(BOXSIZE * 2, BOXSIZE * 13.5, 1, day_type[current_day_type], ILI9341_WHITE);
 
   
+  tft.drawRect(0, 200, 114, 40, ILI9341_WHITE);
   int index_offset = 0;
   if (current_day_type == WEEKEND) { index_offset = 12; }
+  if(current_day_type == WEEKDAY)
+  {
+    tft.fillRect(1, 201, 110, 38, ILI9341_BLACK);
+    if(weekday_Flag == WEEKDAY_ENABLE)
+    {
+      printText(15, 225 , 1, "Enable", ILI9341_WHITE);
+    }
+    else
+    {
+      printText(15 , 225, 1, "Disable", ILI9341_WHITE);
+    }
+  }
+  else if(current_day_type == WEEKEND)
+  {
+    tft.fillRect(1, 201, 110, 38, ILI9341_BLACK);
+    if(weekend_Flag == WEEKEND_ENABLE)
+    {
+      printText(15, 225 , 1, "Enable", ILI9341_WHITE);
+    }
+    else
+    {
+      printText(15 , 225, 1, "Disable", ILI9341_WHITE);
+    }
+  }
 
   // prints the 4 set point boxes with their data
   for(int i=0; i<4; i++) {
@@ -993,7 +1142,25 @@ void drawBottomBar() {
 
   // Cool/Heat status
 //  printMode();
-  printText(BOXSIZE, BOXSIZE * 22.5, 1, modes[mode], ILI9341_WHITE);
+  String innermode = "";
+  switch(mode)
+  {
+	  case OFF_MODE:
+		  innermode = "off";
+		  break;
+	  case COOL_MODE:
+      innermode = "Cooling";
+      break;
+    case HEAT_MODE:
+      innermode = "Heating";
+      break;
+  }
+  if(pre_mode != mode)
+  {
+    tft.fillRect(0, 202, 114, 40, ILI9341_BLACK);
+    pre_mode = mode;
+  }
+  printText(BOXSIZE, BOXSIZE * 22.5, 1, innermode, ILI9341_WHITE);
 
   // Auto status
   String label;
@@ -1107,7 +1274,7 @@ void printDOWandTime(){
     mn_ = "0" + String(mn);
   }
   
-  String str = "Fri " + String(hr) + ":" + mn_ + " " + period;
+  String str = String(dayNames[EEPROM.read(24)]) + " " + String(hr) + ":" + mn_ + " " + period;
   printText(BOXSIZE * 20, BOXSIZE * 1.5, 1, str, ILI9341_WHITE);
 }
 
