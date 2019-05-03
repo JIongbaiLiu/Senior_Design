@@ -45,7 +45,7 @@ DallasTemperature sensors(&oneWire);
 
 // general vars
 int current_page = HOME_PAGE;
-const char* dayNames[7] = {"Sun", "Mon", "Tues", "Wed", "Thu", "Fri", "Sat"};
+const char* dayNames[7] = {"Mon", "Tues", "Wed", "Thu", "Fri", "Sat","Sun"};
 const char* am_pm[2] = {"AM", "PM"};
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
 Adafruit_FT6206 ts = Adafruit_FT6206();
@@ -82,6 +82,7 @@ int current_hour = 6;
 int previous_hour = current_hour;
 int current_minute = 12;
 int previous_minute = current_minute;
+int sleeper_Timer = 0;
 
 //set point page vars
 int current_set_point = 3;
@@ -158,7 +159,7 @@ void loop() {
     printDOWandTime(); 
   }
 
-  if(current_page == HOME_PAGE)
+  if(current_page == HOME_PAGE && !hold_on)
   {
     int temp_hour = Clock.hour();
     int temp_min = Clock.minute();
@@ -191,7 +192,19 @@ void loop() {
             prev_set_temp = is_changed;
             printSetTemp();
             is_changed = set_temp;
+            auto_on = true;
+            drawBottomBar();
+            mode = AUTO_MODE;
           }
+      }
+      else
+      {
+            if(mode != OFF_MODE)
+            {
+              mode = OFF_MODE;
+              auto_on = false;
+              drawBottomBar();
+            }
       }
     }
     else
@@ -203,10 +216,6 @@ void loop() {
             int set_hr = EEPROM.read(i);
             int set_min = EEPROM.read(i+1);
             int stored_set_temp = EEPROM.read(i+2);
-            if(set_temp != stored_set_temp )
-            {
-              break;
-            }
             if(set_hr < temp_hour)
             {
                 prev_set_temp = set_temp;
@@ -219,7 +228,25 @@ void loop() {
                 set_temp = stored_set_temp;
             }
           }
+          if(set_temp != is_changed)
+          {
+            prev_set_temp = is_changed;
+            printSetTemp();
+            is_changed = set_temp;
+            auto_on = true;
+            drawBottomBar();
+            mode = AUTO_MODE;
+          }
       }  
+      else
+      {
+            if(mode != OFF_MODE)
+            {
+              mode = OFF_MODE;
+              auto_on = false;
+              drawBottomBar();
+            }
+      }
     }
     
   }
@@ -237,10 +264,16 @@ void loop() {
       prev_real_temp = real_temp;
     }
   }
+
+  if(sleeper_Timer >= 1200 * 6)
+  {
+    clearScreen();
+  }
   
   if(!ts.touched()){
     currently_touched = false;
     temp_timer++;
+    //sleeper_Timer++;
     return;
   }
 
@@ -254,15 +287,43 @@ void loop() {
       p.x = map(p.x, 0, 240, 240, 0);
       p.y = map(p.y, 0, 320, 320, 0);
 
+      if(sleeper_Timer > 0)
+      {
+        if(sleeper_Timer >= 1200 * 6)
+        {
+          switch(current_page)
+          {
+            case HOME_PAGE:
+              clearScreen();
+              drawHomeScreen();
+              break;
+            case SETTINGS_PAGE:
+              clearScreen();
+              drawSettingsScreen();
+              break;
+            case TIME_SETTINGS_PAGE:
+              clearScreen();
+              drawTimeSettingPage();
+              break;
+            case SET_POINTS_PAGE:
+              clearScreen();
+              drawEditSetPointPage();
+              break; 
+          }
+        }
+        sleeper_Timer = 0; 
+      }
       switch(current_page) {
         case HOME_PAGE:
+          sleeper_Timer = 0;
           // settings button
           if(p.x >= BOXSIZE * 0 && p.x <= BOXSIZE * 4 && p.y >= BOXSIZE * 22 && p.y <= BOXSIZE * 32) {
             current_page = SETTINGS_PAGE;
             clearScreen();
             drawSettingsScreen();
           }
-
+          
+          // mode button
           else if(p.x >= BOXSIZE * 20 && p.x <= BOXSIZE * 24 && p.y >= BOXSIZE * 21 && p.y <= BOXSIZE * 31)
           {
             switch (mode)
@@ -589,6 +650,18 @@ void loop() {
           else if(p.x >= BOXSIZE * 10 && p.x <= BOXSIZE * 13.5 && p.y >= BOXSIZE * 2 && p.y <= BOXSIZE * 19) {
             current_set_point = 1;
             current_page = EDIT_SET_POINT_PAGE;
+            if (EEPROM.read(current_set_point*3) != NOT_SET) {
+              curr_edit_hour = EEPROM.read(current_set_point*3);
+              if(curr_edit_hour > 12) {
+                curr_edit_hour -= 12;
+              }
+              curr_edit_min = EEPROM.read(current_set_point*3+1);
+              curr_edit_temp = EEPROM.read(current_set_point*3+2);
+
+            }
+            prev_edit_hour = curr_edit_hour;
+            prev_edit_min = curr_edit_min;
+            prev_edit_temp = curr_edit_temp;
             clearScreen();
             drawEditSetPointPage();
           }
@@ -597,6 +670,18 @@ void loop() {
           else if(p.x >= BOXSIZE * 15 && p.x <= BOXSIZE * 18.5 && p.y >= BOXSIZE * 2 && p.y <= BOXSIZE * 19) {
             current_set_point = 2;
             current_page = EDIT_SET_POINT_PAGE;
+            if (EEPROM.read(current_set_point*3) != NOT_SET) {
+              curr_edit_hour = EEPROM.read(current_set_point*3);
+              if(curr_edit_hour > 12) {
+                curr_edit_hour -= 12;
+              }
+              curr_edit_min = EEPROM.read(current_set_point*3+1);
+              curr_edit_temp = EEPROM.read(current_set_point*3+2);
+
+            }
+            prev_edit_hour = curr_edit_hour;
+            prev_edit_min = curr_edit_min;
+            prev_edit_temp = curr_edit_temp;
             clearScreen();
             drawEditSetPointPage();
           }
@@ -605,6 +690,18 @@ void loop() {
           else if(p.x >= BOXSIZE * 20 && p.x <= BOXSIZE * 23.5 && p.y >= BOXSIZE * 2 && p.y <= BOXSIZE * 19) {
             current_set_point = 3;
             current_page = EDIT_SET_POINT_PAGE;
+            if (EEPROM.read(current_set_point*3) != NOT_SET) {
+              curr_edit_hour = EEPROM.read(current_set_point*3);
+              if(curr_edit_hour > 12) {
+                curr_edit_hour -= 12;
+              }
+              curr_edit_min = EEPROM.read(current_set_point*3+1);
+              curr_edit_temp = EEPROM.read(current_set_point*3+2);
+
+            }
+            prev_edit_hour = curr_edit_hour;
+            prev_edit_min = curr_edit_min;
+            prev_edit_temp = curr_edit_temp;
             clearScreen();
             drawEditSetPointPage();
           }
@@ -744,6 +841,15 @@ void loop() {
              EEPROM.write(current_set_point*3+2, curr_edit_temp);
            }
            else {
+             if(am_edit_selected && curr_edit_hour == 12) {
+              curr_edit_hour = 0;
+             }
+             else if(!am_edit_selected && curr_edit_hour == 12) {
+              curr_edit_hour = 12;
+             }
+             else if(!am_edit_selected) {
+              curr_edit_hour += 12;
+             }
              EEPROM.write(current_set_point*3+12, curr_edit_hour);
              EEPROM.write(current_set_point*3+12+1, curr_edit_min);
              EEPROM.write(current_set_point*3+12+2, curr_edit_temp);
@@ -1205,7 +1311,7 @@ void drawBottomBar() {
 // toggles LEDs to show current status
 void set_status() {
   if (real_temp > set_temp) { //cool or off
-    if(mode == COOL_MODE || mode == AUTO_MODE) {
+    if(mode == COOL_MODE || mode == AUTO_MODE || hold_on) {
       // turn on blue LED
       digitalWrite(BLUE_LED, HIGH);
       digitalWrite(RED_LED, LOW);
@@ -1215,9 +1321,13 @@ void set_status() {
       digitalWrite(RED_LED, LOW);
       digitalWrite(BLUE_LED, LOW);
     }
+    else{
+      digitalWrite(RED_LED, LOW);
+      digitalWrite(BLUE_LED, LOW);
+    }
   }
   else if (real_temp < set_temp) {
-    if(mode ==  HEAT_MODE|| mode == AUTO_MODE) {
+    if(mode ==  HEAT_MODE|| mode == AUTO_MODE || hold_on) {
       // turn on red LED
       digitalWrite(BLUE_LED, LOW);
       digitalWrite(RED_LED, HIGH);
@@ -1226,6 +1336,10 @@ void set_status() {
       // turn off blue LED
       digitalWrite(BLUE_LED, LOW);
       digitalWrite(RED_LED, LOW);
+    }
+    else{
+      digitalWrite(RED_LED, LOW);
+      digitalWrite(BLUE_LED, LOW);
     }
   }
   else {
