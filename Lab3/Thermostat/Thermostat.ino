@@ -159,7 +159,8 @@ void loop() {
     printDOWandTime(); 
   }
 
-  if(current_page == HOME_PAGE && !hold_on)
+  
+  if(current_page == HOME_PAGE && !hold_on && (weekday_Flag == 0 || weekend_Flag == 0 ))
   {
     int temp_hour = Clock.hour();
     int temp_min = Clock.minute();
@@ -273,7 +274,7 @@ void loop() {
   if(!ts.touched()){
     currently_touched = false;
     temp_timer++;
-    //sleeper_Timer++;
+    sleeper_Timer++;
     return;
   }
 
@@ -347,6 +348,7 @@ void loop() {
           // auto button
           else if(p.x >= BOXSIZE * 20 && p.x <= BOXSIZE * 24 && p.y >= BOXSIZE * 10.5 && p.y <= BOXSIZE * 20.5) {
             auto_on = !auto_on;
+            mode = AUTO_MODE;
             drawBottomBar();
           }
 
