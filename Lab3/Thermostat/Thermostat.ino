@@ -6,6 +6,8 @@
 #include <Adafruit_FT6206.h>
 #include "RTClib.h"
 #include <EEPROM.h>
+#include <OneWire.h> 
+#include <DallasTemperature.h>
 
 
 #define TFT_CS 10
@@ -18,11 +20,12 @@
 #define WEEKDAY 0
 #define WEEKEND 1
 #define NOT_SET 255
-//do i need these?
 #define COOL_MODE 0
 #define HEAT_MODE 1
-#define ATUO_MODE 2
-
+#define AUTO_MODE 2
+#define ONE_WIRE_BUS 2
+#define RED_LED 15
+#define BLUE_LED 14
 
 // pages
 #define HOME_PAGE 0
@@ -32,38 +35,10 @@
 #define EDIT_SET_POINT_PAGE 4
 
 
-/**
- * Class Name: Set Point
- * Description: Holds the set point data
- * 
- * Note: The "constructor" is set_values. My c++ is a little rough
- */
-class SetPoint {
-  public:
-    void set_values(String day_type_, int h_, int m_, int t_, String period_) {
-      day_type = day_type_;
-      h = h_;
-      m = m_;
-      temp = t_; 
-      period = period_;
-      set = true;
-    }
-    String get_day_type() { return day_type; }
-    int get_hour() { return h; }
-    int get_min()  { return m; }
-    int get_temp() { return temp; }
-    void clear_data() { set = false; }
-    String get_period() { return period; }
-    bool is_set() { return set; }
-
-  private:
-    String day_type;
-    int h;
-    int m;
-    String period;
-    int temp;
-    bool set;
-};
+// Setup one wire instance to communicate with temp sensor
+OneWire oneWire(ONE_WIRE_BUS); 
+// Pass onewire reference to Dallas Temp.
+DallasTemperature sensors(&oneWire);
 
 // general vars
 int current_page = HOME_PAGE;
@@ -83,12 +58,13 @@ int prev_set_temp = set_temp;
 bool currently_touched = false;
 bool auto_on = false;
 bool hold_on = false;
-int mode = COOL_MODE;
-const char* modes[2] = {"Cool Mode", "Heat Mode"};
+int mode = AUTO_MODE;
+const char* modes[3] = {"Cool Mode", "Heat Mode", "Off"};
 int temp_pin = 3;
 double tempF;
 int reading;
 int real_time_min;
+int temp_timer = 0;
 
 // time setting page vars
 bool am_selected = false;
@@ -103,8 +79,8 @@ int previous_minute = current_minute;
 int current_set_point = 3;
 int current_day_type = WEEKDAY;
 const char* day_type[2] = {"Weekday", "Weekend"};
-SetPoint weekday_set_points[4];
-SetPoint weekend_set_points[4];
+//SetPoint weekday_set_points[4];
+//SetPoint weekend_set_points[4];
 
 // EDIT_SET_POINT_PAGE vars
 int curr_edit_hour;
@@ -117,12 +93,13 @@ int am_edit_selected = false;
 
 
 void setup() {
-  
   while (!Serial);
- 
   Serial.begin(115200);
+  sensors.begin(); 
   
   tft.begin();
+  pinMode(RED_LED, OUTPUT);
+  pinMode(BLUE_LED, OUTPUT);
 
   if (! ts.begin(40)) {  // pass in 'sensitivity' coefficient
     Serial.println("Couldn't start FT6206 touchscreen controller");
@@ -160,10 +137,10 @@ void setup() {
 //  EEPROM.write(10, 255);
 //  EEPROM.write(11, 255);
   
-  current_page = SET_POINTS_PAGE;
-  drawSetPointsPage();
+//  current_page = SET_POINTS_PAGE;
+//  drawSetPointsPage();
   //---------------------------------
-//  drawHomeScreen();
+  drawHomeScreen();
 }
 
 void loop() {
@@ -172,12 +149,25 @@ void loop() {
     real_time_min = Clock.minute();
     printDOWandTime(); 
   }
-  //TODO: get real_temp
-  //TODO: get time from RTC (or EEPROM??)
-
+  
+  
+  //2.5 s
+  if(temp_timer >= 600){
+    temp_timer = 0;
+    getTemp();
+    set_status();
+    
+    if(real_temp != prev_real_temp && !ts.touched() && current_page == HOME_PAGE){
+      // Change LCD to reflect current temp
+      printCurrentTemp();
+      // Set real_temp to prev_real_temp
+      prev_real_temp = real_temp;
+    }
+  }
   
   if(!ts.touched()){
     currently_touched = false;
+    temp_timer++;
     return;
   }
 
@@ -771,7 +761,7 @@ void drawTimeSettingPage() {
 void drawSetPointsPage() {
   int offset = 5;
   String set_point_text;
-  SetPoint sp[4];
+//  SetPoint sp[4];
   
   drawCornerButton("Go Back");
   printText(BOXSIZE * 15, BOXSIZE *  2.5, 1, "Your Set Points", ILI9341_WHITE);  // title
@@ -780,16 +770,7 @@ void drawSetPointsPage() {
   drawArrows(BOXSIZE * 3.5, BOXSIZE * 10, 30, 20, 60, ILI9341_WHITE);
   printText(BOXSIZE * 2, BOXSIZE * 13.5, 1, day_type[current_day_type], ILI9341_WHITE);
 
-//  // get correct set point array
-//  for(int i=0; i<4; i++) {
-//    if(current_day_type == WEEKDAY) {
-//      sp[i] = weekday_set_points[i];
-//    }
-//    else {
-//      sp[i] = weekend_set_points[i];
-//    }
-//  }
-//  
+  
   int index_offset = 0;
   if (current_day_type == WEEKEND) { index_offset = 12; }
 
@@ -837,7 +818,7 @@ void drawSetPointsPage() {
 void drawEditSetPointPage() {
   String day_type;
   int i;
-  SetPoint sp;
+//  SetPoint sp;
   if(current_day_type == WEEKDAY) {
     i = current_set_point*3;
     day_type = "Weekday";
@@ -1054,18 +1035,39 @@ void drawBottomBar() {
   printText(BOXSIZE * 23.5, BOXSIZE * 22.5, 1, label, color);
 }
 
-// future work
-//void printMode() {
-//  if (set_temp > real_temp) { //cool or off
-//    if(mode == COOL_MODE || mode == AUTO_MODE) {
-//      // print cooling
-//    }
-//    else {
-//      
-//    }
-//  }
+// toggles LEDs to show current status
+void set_status() {
+  if (real_temp > set_temp) { //cool or off
+    if(mode == COOL_MODE || mode == AUTO_MODE) {
+      // turn on blue LED
+      digitalWrite(BLUE_LED, HIGH);
+      digitalWrite(RED_LED, LOW);
+    }
+    else if (mode == HEAT_MODE) {
+      // turn off red led
+      digitalWrite(RED_LED, LOW);
+      digitalWrite(BLUE_LED, LOW);
+    }
+  }
+  else if (real_temp < set_temp) {
+    if(mode ==  HEAT_MODE|| mode == AUTO_MODE) {
+      // turn on red LED
+      digitalWrite(BLUE_LED, LOW);
+      digitalWrite(RED_LED, HIGH);
+    }
+    else if (mode == COOL_MODE) {
+      // turn off blue LED
+      digitalWrite(BLUE_LED, LOW);
+      digitalWrite(RED_LED, LOW);
+    }
+  }
+  else {
+    // they're equal, turn off everything
+      digitalWrite(BLUE_LED, LOW);
+      digitalWrite(RED_LED, LOW);
+  }
 //  printText(BOXSIZE, BOXSIZE * 22.5, 1, modes[mode], ILI9341_WHITE);
-//}
+}
 
 // Prints the current temperature
 void printCurrentTemp(){
@@ -1115,6 +1117,6 @@ void printSetTemp() {
 }
 
 void getTemp() {
-  reading = analogRead(temp_pin);
-  tempF = (reading / 9.31 * 1.8 + 32);
+  sensors.requestTemperatures();
+  real_temp = int(sensors.getTempFByIndex(0));
 }
